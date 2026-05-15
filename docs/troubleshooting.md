@@ -131,6 +131,13 @@ github.com/mythologyli/zju-connect/stack/gvisor.(*Stack).Run
 
 大量 `[SOCKS5] connection reset by peer` 不一定是整体断线，可能只是单条连接重置。
 
+快速检查：
+
+```bash
+ez4-vpn status
+ez4-vpn log 120
+```
+
 建议设置：
 
 ```ini
@@ -141,12 +148,18 @@ KeepAlive=true
 当前实际见过的致命栈：
 
 ```text
-Error occurred while receiving, retrying: ... connection reset by peer
+Error occurred while receiving, retrying: EOF
 panic: EOF
 github.com/mythologyli/zju-connect/stack/gvisor.(*Stack).Run
 ```
 
-如果重启 EZ4Connect 后还经常断，优先怀疑 VPN 端 IPv6 路径或客户端 keepalive，而不是 Codex 本身。
+如果 `ez4-vpn status` 看到当前进程带 `-disable-keep-alive`，说明 GUI 实际启动参数没有采用你期望的 keepalive 设置。切到受控启动器：
+
+```bash
+ez4-vpn restart
+```
+
+它直接运行 `/Applications/EZ4Connect.app/Contents/MacOS/zju-connect`，默认不加 `-disable-keep-alive`。如果重启后还经常断，优先怀疑 VPN 端 IPv6 路径或客户端 gVisor 栈稳定性，而不是 Codex 本身。
 
 ## device code 被禁用
 

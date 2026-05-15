@@ -19,6 +19,7 @@ install -m 0755 "$ROOT/scripts/mac/win-codex-login" "$BIN/win-codex-login"
 install -m 0755 "$ROOT/scripts/mac/win-codex-logout" "$BIN/win-codex-logout"
 install -m 0755 "$ROOT/scripts/mac/wsl-mac-proxy-tunnel.sh" "$BIN/wsl-mac-proxy-tunnel.sh"
 install -m 0755 "$ROOT/scripts/mac/diagnose.sh" "$BIN/win-codex-diagnose"
+install -m 0755 "$ROOT/scripts/mac/ez4-vpn" "$BIN/ez4-vpn"
 
 if [[ ! -f "$CONFIG_DIR/env" ]]; then
   install -m 0600 "$ROOT/config.example.env" "$CONFIG_DIR/env"
@@ -38,6 +39,7 @@ echo "  $BIN/win-ssh"
 echo "  $BIN/win-codex"
 echo "  $BIN/wsl-mac-proxy-tunnel.sh"
 echo "  $BIN/win-codex-diagnose"
+echo "  $BIN/ez4-vpn"
 echo "Config:"
 echo "  $CONFIG_DIR/env"
 if [[ "$START" == "1" ]]; then

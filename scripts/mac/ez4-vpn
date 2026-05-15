@@ -1,0 +1,278 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CONFIG="${CODEX_BRIDGE_ENV:-$HOME/.config/codex-bridge/env}"
+if [[ -f "$CONFIG" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$CONFIG"
+  set +a
+fi
+
+EZ4_CONFIG="${EZ4_CONFIG:-$HOME/Library/Preferences/EZ4Connect/config.ini}"
+EZ4_BIN="${EZ4_BIN:-/Applications/EZ4Connect.app/Contents/MacOS/zju-connect}"
+EZ4_LOG="${EZ4_LOG:-$HOME/Library/Application Support/EZ4Connect/zjuconnect.manual.log}"
+EZ4_APP_LOG="${EZ4_APP_LOG:-$HOME/Library/Application Support/EZ4Connect/zjuconnect.log}"
+EZ4_PID_PATTERN="${EZ4_PID_PATTERN:-/Applications/EZ4Connect.app/Contents/MacOS/zju-connect}"
+
+ini_get() {
+  local section="$1" key="$2" file="${3:-$EZ4_CONFIG}"
+  [[ -f "$file" ]] || return 1
+  awk -F= -v want_section="$section" -v want_key="$key" '
+    $0 ~ /^[[:space:]]*\[/ {
+      current=$0
+      gsub(/^[[:space:]]*\[/, "", current)
+      gsub(/\][[:space:]]*$/, "", current)
+      next
+    }
+    current == want_section {
+      k=$1
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", k)
+      if (k == want_key) {
+        v=substr($0, index($0, "=") + 1)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+        print v
+        exit 0
+      }
+    }
+  ' "$file"
+}
+
+decode_b64() {
+  python3 - "$1" <<'PY'
+import base64, sys
+data = sys.argv[1].strip()
+if data:
+    print(base64.b64decode(data).decode("utf-8", "ignore"))
+PY
+}
+
+redact() {
+  sed -E \
+    -e 's/-password [^ ]+/-password <redacted>/g' \
+    -e 's/-username [^ ]+/-username <redacted>/g' \
+    -e 's/(Password=).*/\1<redacted>/Ig' \
+    -e 's/(Username=).*/\1<redacted>/Ig' \
+    -e 's/(Token: ).*/\1<redacted>/g' \
+    -e 's/(Server session ID: ).*/\1<redacted>/g'
+}
+
+print_sanitized_command() {
+  local hide_next=0 arg
+  printf 'Command: %q ' "$EZ4_BIN"
+  for arg in "${EZ4_ARGS[@]}"; do
+    if [[ "$hide_next" == "1" ]]; then
+      printf '%q ' '<redacted>'
+      hide_next=0
+      continue
+    fi
+    printf '%q ' "$arg"
+    case "$arg" in
+      -username|-password)
+        hide_next=1
+        ;;
+    esac
+  done
+  echo
+}
+
+default_bool() {
+  local value="${1:-}" fallback="${2:-0}"
+  case "$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')" in
+    true|1|yes|on) echo 1 ;;
+    false|0|no|off) echo 0 ;;
+    *) echo "$fallback" ;;
+  esac
+}
+
+build_args() {
+  local username password encoded
+  username="${EZ4_USERNAME:-$(ini_get Credential Username || true)}"
+  password="${EZ4_PASSWORD:-}"
+  if [[ -z "$password" && -n "${EZ4_PASSWORD_CMD:-}" ]]; then
+    password="$(eval "$EZ4_PASSWORD_CMD")"
+  fi
+  if [[ -z "$password" ]]; then
+    encoded="$(ini_get Credential Password || true)"
+    if [[ -n "$encoded" ]]; then
+      password="$(decode_b64 "$encoded")"
+    fi
+  fi
+
+  if [[ -z "$username" || -z "$password" ]]; then
+    echo "Missing EZ4 username/password. Put them in EZ4Connect config.ini or set EZ4_USERNAME/EZ4_PASSWORD_CMD." >&2
+    return 2
+  fi
+
+  local protocol auth_type login_domain server port dns_server socks_host socks_port http_host http_port
+  protocol="${EZ4_PROTOCOL:-$(ini_get ZJUConnect Protocol || true)}"
+  auth_type="${EZ4_AUTH_TYPE:-$(ini_get ZJUConnect AuthType || true)}"
+  login_domain="${EZ4_LOGIN_DOMAIN:-$(ini_get ZJUConnect LoginDomain || true)}"
+  server="${EZ4_SERVER:-$(ini_get ZJUConnect ServerAddress || true)}"
+  port="${EZ4_PORT:-$(ini_get ZJUConnect ServerPort || true)}"
+  dns_server="${EZ4_DNS_SERVER:-auto}"
+  socks_host="${CAMPUS_SOCKS_HOST:-127.0.0.1}"
+  socks_port="${CAMPUS_SOCKS_PORT:-11080}"
+  http_host="${EZ4_HTTP_HOST:-127.0.0.1}"
+  http_port="${EZ4_HTTP_PORT:-11081}"
+
+  protocol="${protocol:-easyconnect}"
+  auth_type="${auth_type:-auth/psw}"
+  case "$auth_type" in
+    psw|cas|smsCheckCode)
+      auth_type="auth/${auth_type}"
+      ;;
+  esac
+  login_domain="${login_domain:-}"
+  server="${server:-}"
+  port="${port:-443}"
+
+  if [[ -z "$server" ]]; then
+    echo "Missing EZ4 server. Set EZ4_SERVER or configure EZ4Connect." >&2
+    return 2
+  fi
+
+  EZ4_ARGS=(
+    -username "$username"
+    -password "$password"
+    -protocol "$protocol"
+    -auth-type "$auth_type"
+    -server "$server"
+    -port "$port"
+    -zju-dns-server "$dns_server"
+    -socks-bind "${socks_host}:${socks_port}"
+    -http-bind "${http_host}:${http_port}"
+  )
+
+  if [[ -n "$login_domain" ]]; then
+    EZ4_ARGS+=(-login-domain "$login_domain")
+  fi
+  if [[ "$(default_bool "${EZ4_MULTI_LINE:-$(ini_get ZJUConnect MultiLine || true)}" 0)" == "0" ]]; then
+    EZ4_ARGS+=(-disable-multi-line)
+  fi
+  if [[ "$(default_bool "${EZ4_DISABLE_ZJU_CONFIG:-1}" 1)" == "1" ]]; then
+    EZ4_ARGS+=(-disable-zju-config)
+  fi
+  if [[ "$(default_bool "${EZ4_DISABLE_SERVER_CONFIG:-0}" 0)" == "1" ]]; then
+    EZ4_ARGS+=(-disable-server-config)
+  fi
+  if [[ "$(default_bool "${EZ4_DISABLE_ZJU_DNS:-0}" 0)" == "1" ]]; then
+    EZ4_ARGS+=(-disable-zju-dns)
+  fi
+  if [[ -n "${EZ4_KEEP_ALIVE_URL:-}" ]]; then
+    EZ4_ARGS+=(-keep-alive-url "$EZ4_KEEP_ALIVE_URL")
+  fi
+  if [[ "$(default_bool "${EZ4_DISABLE_KEEP_ALIVE:-0}" 0)" == "1" ]]; then
+    EZ4_ARGS+=(-disable-keep-alive)
+  fi
+}
+
+status() {
+  echo "EZ4Connect status"
+  echo "================="
+  echo
+  echo "-- Process"
+  if pgrep -f "$EZ4_PID_PATTERN" >/dev/null 2>&1; then
+    local procs
+    procs="$(ps axww -o pid,lstart,command | rg -i "$EZ4_PID_PATTERN|zju-connect" | rg -v rg || true)"
+    printf '%s\n' "$procs" | redact
+    if printf '%s\n' "$procs" | grep -q -- "-disable-keep-alive"; then
+      echo
+      echo "Warning: current zju-connect was launched with -disable-keep-alive."
+      echo "Use 'ez4-vpn restart' to relaunch through the controlled wrapper."
+    fi
+  else
+    echo "zju-connect is not running"
+  fi
+  echo
+  echo "-- Ports"
+  lsof -nP -iTCP:${CAMPUS_SOCKS_PORT:-11080} -iTCP:${EZ4_HTTP_PORT:-11081} -sTCP:LISTEN 2>/dev/null || true
+  echo
+  echo "-- Recent fatal log"
+  if [[ -f "$EZ4_APP_LOG" ]]; then
+    rg -n "panic:|Error occurred while receiving|EOF|broken pipe|operation timed out" "$EZ4_APP_LOG" | tail -n 12 | redact || true
+  else
+    echo "No GUI log: $EZ4_APP_LOG"
+  fi
+}
+
+run_foreground() {
+  if [[ ! -x "$EZ4_BIN" ]]; then
+    echo "zju-connect binary not found: $EZ4_BIN" >&2
+    exit 1
+  fi
+  build_args
+  mkdir -p "$(dirname "$EZ4_LOG")"
+  echo "Starting zju-connect without -disable-keep-alive unless explicitly configured."
+  print_sanitized_command
+  "$EZ4_BIN" "${EZ4_ARGS[@]}" 2>&1 | tee -a "$EZ4_LOG"
+  exit "${PIPESTATUS[0]}"
+}
+
+start_terminal() {
+  local tool="${HOME}/.local/bin/ez4-vpn"
+  if [[ ! -x "$tool" ]]; then
+    tool="$0"
+  fi
+  osascript \
+    -e 'on run argv' \
+    -e 'tell application "Terminal"' \
+    -e 'activate' \
+    -e 'do script (item 1 of argv)' \
+    -e 'end tell' \
+    -e 'end run' \
+    "$tool foreground"
+}
+
+stop_vpn() {
+  pkill -f "$EZ4_PID_PATTERN" 2>/dev/null || true
+}
+
+quit_gui() {
+  osascript -e 'tell application "EZ4Connect" to quit' >/dev/null 2>&1 || true
+}
+
+case "${1:-status}" in
+  foreground|run)
+    run_foreground
+    ;;
+  start|start-terminal)
+    start_terminal
+    ;;
+  restart)
+    if [[ "$(default_bool "${EZ4_QUIT_GUI_ON_RESTART:-1}" 1)" == "1" ]]; then
+      quit_gui
+      sleep 1
+    fi
+    stop_vpn
+    sleep 1
+    start_terminal
+    ;;
+  stop)
+    stop_vpn
+    ;;
+  status)
+    status
+    ;;
+  log)
+    tail -n "${2:-160}" "$EZ4_APP_LOG" 2>/dev/null | redact || true
+    ;;
+  follow)
+    tail -f "$EZ4_APP_LOG" 2>/dev/null | redact
+    ;;
+  doctor|diagnose)
+    status
+    ;;
+  *)
+    cat <<'EOF'
+Usage:
+  ez4-vpn status          Show process, ports, and fatal log markers
+  ez4-vpn start           Open a Terminal running controlled zju-connect
+  ez4-vpn foreground      Run controlled zju-connect in this terminal
+  ez4-vpn restart         Quit EZ4Connect GUI, stop zju-connect, then open controlled launcher
+  ez4-vpn stop            Stop zju-connect
+  ez4-vpn log [N]         Show recent sanitized EZ4Connect log lines
+  ez4-vpn follow          Follow sanitized EZ4Connect log
+EOF
+    ;;
+esac

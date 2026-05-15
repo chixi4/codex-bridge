@@ -21,6 +21,8 @@ win-ssh
 win-codex login
 win-codex status
 win-codex logout
+ez4-vpn status
+ez4-vpn restart
 ```
 
 远端 Windows 才提供 `codex.cmd`，它把 Windows 当前目录转换成 WSL 路径，然后调用 WSL 的 `/usr/local/bin/codex`。
@@ -34,6 +36,7 @@ WSL 的 `/usr/local/bin/codex` 不是真正的 Codex CLI，而是代理包装器
 - 不要默认加 `--no-alt-screen`。它会让 transcript 退出后的主界面变空，用户更希望保留 Codex 原生界面。长回复回看用 `Ctrl+T` 的 transcript/pager。
 - 不要用 device-code 登录，当前 Team 禁用了。
 - 不要把 EZ4Connect 密码、私钥、Codex auth 文件提交进仓库。
+- 如果 GUI 启动的 `zju-connect` 带 `-disable-keep-alive`，用 `ez4-vpn restart` 切到受控启动器。这个命令沿用本机 EZ4Connect 配置文件，但仓库里不保存真实密码。
 
 ## 已定位问题
 

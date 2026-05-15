@@ -9,7 +9,9 @@ bash -n scripts/mac/* scripts/wsl/* scripts/check.sh
 
 echo "== launchagent plist =="
 if command -v plutil >/dev/null 2>&1; then
-  plutil -lint config/launchagents/com.codex-bridge.wsl-macproxy.plist
+  for plist in config/launchagents/*.plist; do
+    plutil -lint "$plist"
+  done
 else
   echo "plutil not available; skipping"
 fi

@@ -6,6 +6,7 @@
 - Codex `auth.json`
 - OpenAI token
 - EZ4Connect 密码
+- EZ4Connect `config.ini`，里面可能有 base64 形式保存的密码
 - `zjuconnect.log` 原文
 
 本项目只保留模板和脚本。真实配置建议放：

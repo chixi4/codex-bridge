@@ -18,6 +18,7 @@ WSL codex wrapper -> OpenAI / npm / Google
 Mac 上确认 EZ4Connect 和 Clash 在：
 
 ```bash
+ez4-vpn status
 nc -zv 127.0.0.1 11080
 nc -zv 127.0.0.1 7897
 ```
@@ -73,6 +74,14 @@ bash scripts/mac/install-mac-tools.sh
 ```bash
 bash scripts/mac/install-mac-tools.sh --start
 ```
+
+如果 EZ4Connect GUI 启动的 `zju-connect` 带了 `-disable-keep-alive`，用受控启动器替代：
+
+```bash
+ez4-vpn restart
+```
+
+它会开一个新的 Terminal，直接运行 `zju-connect`，沿用 EZ4Connect 配置文件里的账号/服务器，但不会默认关闭 keepalive。需要短信验证码时就在那个窗口里输入。
 
 Windows PowerShell：
 

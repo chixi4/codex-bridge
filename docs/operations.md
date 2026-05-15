@@ -5,6 +5,7 @@
 Mac：
 
 ```bash
+ez4-vpn status
 nc -zv 127.0.0.1 11080
 nc -zv 127.0.0.1 7897
 win-codex status
@@ -64,6 +65,14 @@ KeepAlive=true
 ```
 
 当前排查发现 `KeepAlive=false` 会让 `zju-connect` 启动时带 `-disable-keep-alive`，长时间空闲更容易被 VPN 网关 reset。
+
+如果 `ez4-vpn status` 发现当前进程仍然带 `-disable-keep-alive`，直接切到受控启动：
+
+```bash
+ez4-vpn restart
+```
+
+这会先退出 EZ4Connect GUI，避免 GUI 用旧参数重新拉起子进程；然后停止现有 `zju-connect`，打开一个新 Terminal 运行不带 `-disable-keep-alive` 的启动命令。短信验证码仍然需要你在新窗口里输入。
 
 ## 5. 半断窗口处理
 
