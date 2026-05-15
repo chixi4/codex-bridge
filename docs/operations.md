@@ -55,6 +55,12 @@ win-codex login
 
 如果登录掉了，不要用 device code。Team 禁用了 device code，走普通网页登录即可。
 
+如果登录成功但 `resume` 里看不到旧会话，通常是旧 session 留在另一个 WSL：
+
+```bash
+win-codex migrate-sessions IsaacLab-22.04 Ubuntu-20.04
+```
+
 ## 4. EZ4Connect 设置
 
 建议在 EZ4Connect 配置里保持：

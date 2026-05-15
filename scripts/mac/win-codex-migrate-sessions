@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CONFIG="${CODEX_BRIDGE_ENV:-$HOME/.config/codex-bridge/env}"
+if [[ -f "$CONFIG" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$CONFIG"
+  set +a
+fi
+
+FROM_DISTRO="${1:-IsaacLab-22.04}"
+TO_DISTRO="${2:-${WSL_DISTRO:-Ubuntu-20.04}}"
+
+echo "Importing Codex sessions:"
+echo "  from: ${FROM_DISTRO}"
+echo "  to:   ${TO_DISTRO}"
+echo
+echo "This copies sessions/history only. Existing auth.json in ${TO_DISTRO} is preserved."
+
+"$(dirname "$0")/win-ssh" \
+  "wsl -d ${TO_DISTRO} -u root -- bash -lc \"cd /root && mkdir -p .codex && tar --exclude=logs_2.sqlite --exclude=logs_2.sqlite-shm --exclude=logs_2.sqlite-wal --exclude=state_5.sqlite --exclude=state_5.sqlite-shm --exclude=state_5.sqlite-wal -czf .codex-backup-before-session-import-\$(date +%Y%m%d-%H%M%S).tgz .codex\" && wsl -d ${FROM_DISTRO} -u root -- tar -C /root/.codex -cf - sessions history.jsonl | wsl -d ${TO_DISTRO} -u root -- tar -C /root/.codex -xf -"
+
+echo
+echo "After import:"
+"$(dirname "$0")/win-ssh" \
+  "wsl -d ${TO_DISTRO} -- bash -lc \"find ~/.codex/sessions -type f 2>/dev/null | wc -l; ls -l ~/.codex/history.jsonl ~/.codex/auth.json 2>/dev/null || true\""

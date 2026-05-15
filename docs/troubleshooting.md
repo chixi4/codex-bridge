@@ -174,3 +174,21 @@ codex login --device-auth
 ```bash
 win-codex login
 ```
+
+## 登录成功但会话历史为空
+
+Codex 登录态和对话 session 都在各自 WSL 的 `~/.codex` 下。切换默认 WSL 后，可能出现新环境已登录，但旧 session 仍在另一个 distro 里的情况。
+
+检查：
+
+```bash
+win-codex status
+```
+
+把旧 session 导入当前默认 WSL：
+
+```bash
+win-codex migrate-sessions IsaacLab-22.04 Ubuntu-20.04
+```
+
+这个命令只复制 `sessions/` 和 `history.jsonl`，不会覆盖目标 WSL 当前有效的 `auth.json`。

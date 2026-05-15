@@ -41,6 +41,10 @@ case "$cmd" in
     shift
     exec "$(dirname "$0")/win-codex-logout" "$@"
     ;;
+  migrate-sessions|import-sessions)
+    shift
+    exec "$(dirname "$0")/win-codex-migrate-sessions" "$@"
+    ;;
   status)
     shift || true
     for_auth_distro status_one
@@ -51,6 +55,7 @@ Usage:
   win-codex login    Log in remote WSL Codex through this Mac browser
   win-codex logout   Log out remote WSL Codex
   win-codex status   Show remote WSL Codex login status
+  win-codex migrate-sessions [from] [to]
 EOF
     ;;
 esac
