@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CONFIG="${CODEX_BRIDGE_ENV:-$HOME/.config/codex-bridge/env}"
+if [[ -f "$CONFIG" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$CONFIG"
+  set +a
+fi
+
+DISTRO="${WSL_DISTRO:-Ubuntu-20.04}"
+
+cmd="${1:-}"
+case "$cmd" in
+  login)
+    shift
+    exec "$(dirname "$0")/win-codex-login" "$@"
+    ;;
+  logout)
+    shift
+    exec "$(dirname "$0")/win-codex-logout" "$@"
+    ;;
+  status)
+    shift || true
+    exec "$(dirname "$0")/win-ssh" "wsl -d ${DISTRO} -- bash -lc \"codex login status\""
+    ;;
+  *)
+    cat <<'EOF'
+Usage:
+  win-codex login    Log in remote WSL Codex through this Mac browser
+  win-codex logout   Log out remote WSL Codex
+  win-codex status   Show remote WSL Codex login status
+EOF
+    ;;
+esac

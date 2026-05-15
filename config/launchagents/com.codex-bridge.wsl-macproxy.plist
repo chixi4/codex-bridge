@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.codex-bridge.wsl-macproxy</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__CODEX_BRIDGE_TUNNEL__</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+  <key>StandardOutPath</key>
+  <string>/tmp/codex_bridge_wsl_proxy_tunnel.stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/codex_bridge_wsl_proxy_tunnel.stderr.log</string>
+</dict>
+</plist>

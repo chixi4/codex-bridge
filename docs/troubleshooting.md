@@ -1,0 +1,163 @@
+# 故障排查
+
+## Codex 长回复不好回看
+
+不要依赖 Mac 终端原生滚动条。Codex 的主界面和 transcript 是 TUI 内部管理的，终端 scrollback 不一定包含完整内容。
+
+正确方式：
+
+```text
+Ctrl+T    打开 transcript/pager
+Ctrl+U    上半页
+Ctrl+D    下半页
+↑/↓       小幅滚动
+pgup/pgdn 上下翻页
+q         回到主界面
+```
+
+曾经试过默认加 `--no-alt-screen`，但副作用是退出 transcript 后主界面变得很空，不像 Codex 原生界面。现在 WSL 包装器会给交互式 `codex` 加 `tui.alternate_screen="always"`，尽量保持原生 TUI。
+
+如果画面边缘出现很多 `[` / `]`，通常是终端和 TUI 重绘状态短暂不一致，不代表上文丢了。先退出当前 Codex，重新运行一次 `codex`；仍然出现时再检查终端类型和包装器是否用了 `--no-alt-screen`。
+
+## 画面还在但完全输不进去
+
+最可能是 SSH 半断。EZ4Connect/SOCKS/VPN 路径断开时，TCP 会话可能没有立刻让终端知道，表现为界面停着但输入不进。
+
+解决：
+
+```text
+关掉旧窗口，重新 win-ssh。
+```
+
+预防：
+
+```bash
+win-ssh
+```
+
+`win-ssh` 使用：
+
+```text
+ServerAliveInterval=15
+ServerAliveCountMax=2
+TCPKeepAlive=yes
+```
+
+如果链路坏了，大约 30 秒内会断开，避免长期假活。
+
+## codex 在 Windows 里找不到
+
+确认：
+
+```bat
+where codex
+```
+
+应能看到：
+
+```text
+C:\Users\Administrator\bin\codex.cmd
+```
+
+如果没有，把 `C:\Users\Administrator\bin` 加进用户 PATH，或者直接运行：
+
+```bat
+C:\Users\Administrator\bin\codex.cmd
+```
+
+## WSL 不能联网
+
+在 WSL：
+
+```bash
+win-net-check
+```
+
+应看到 Google/npm 返回 HTTP 200。失败时按顺序查：
+
+```bash
+ip route | awk '/default/ {print $3; exit}'
+cat /etc/resolv.conf
+```
+
+Windows：
+
+```powershell
+netsh interface portproxy show all
+```
+
+应有类似：
+
+```text
+172.17.x.1:17898 -> 127.0.0.1:17897
+```
+
+Mac：
+
+```bash
+nc -zv 127.0.0.1 11080
+nc -zv 127.0.0.1 7897
+```
+
+## apt 不能走 SOCKS5
+
+apt 不认识 SOCKS5，但本项目暴露给 WSL 的 `17898` 是 HTTP 可用的代理入口。如果需要让 apt 也走这条链路：
+
+```bash
+HOST_IP=$(ip route | awk '/default/ {print $3; exit}')
+sudo tee /etc/apt/apt.conf.d/95codex-bridge-proxy >/dev/null <<EOF
+Acquire::http::Proxy "http://${HOST_IP}:17898/";
+Acquire::https::Proxy "http://${HOST_IP}:17898/";
+EOF
+```
+
+如果只是清华源等国内源，DNS 修好后也可以不配 apt 代理。
+
+## EZ4Connect 断联
+
+日志：
+
+```text
+~/Library/Application Support/EZ4Connect/zjuconnect.log
+```
+
+真正致命的模式：
+
+```text
+Error occurred while receiving, retrying: ... connection reset by peer
+panic: EOF
+github.com/mythologyli/zju-connect/stack/gvisor.(*Stack).Run
+```
+
+大量 `[SOCKS5] connection reset by peer` 不一定是整体断线，可能只是单条连接重置。
+
+建议设置：
+
+```ini
+AutoReconnect=true
+KeepAlive=true
+```
+
+当前实际见过的致命栈：
+
+```text
+Error occurred while receiving, retrying: ... connection reset by peer
+panic: EOF
+github.com/mythologyli/zju-connect/stack/gvisor.(*Stack).Run
+```
+
+如果重启 EZ4Connect 后还经常断，优先怀疑 VPN 端 IPv6 路径或客户端 keepalive，而不是 Codex 本身。
+
+## device code 被禁用
+
+不要用：
+
+```bash
+codex login --device-auth
+```
+
+使用：
+
+```bash
+win-codex login
+```

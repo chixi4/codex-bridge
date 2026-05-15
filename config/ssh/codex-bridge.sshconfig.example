@@ -1,0 +1,10 @@
+Host win-codex
+  HostName 10.251.1.15
+  User administrator
+  IdentityFile ~/.ssh/nvidia_garlic_node05_vllm
+  IdentitiesOnly yes
+  ProxyCommand nc -X 5 -x 127.0.0.1:11080 %h %p
+  ServerAliveInterval 15
+  ServerAliveCountMax 2
+  TCPKeepAlive yes
+

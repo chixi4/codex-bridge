@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CONFIG="${CODEX_BRIDGE_ENV:-$HOME/.config/codex-bridge/env}"
+if [[ -f "$CONFIG" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$CONFIG"
+  set +a
+fi
+
+DISTRO="${WSL_DISTRO:-Ubuntu-20.04}"
+
+exec "$(dirname "$0")/win-ssh" "wsl -d ${DISTRO} -- bash -lc \"codex logout\""

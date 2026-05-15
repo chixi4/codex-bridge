@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+HOST_IP=$(ip route | awk '/default/ {print $3; exit}')
+PROXY_PORT="${WSL_HOST_PROXY_PORT:-17898}"
+
+export HTTP_PROXY="http://${HOST_IP}:${PROXY_PORT}"
+export HTTPS_PROXY="http://${HOST_IP}:${PROXY_PORT}"
+export ALL_PROXY="socks5h://${HOST_IP}:${PROXY_PORT}"
+export NO_PROXY="localhost,127.0.0.1,::1,172.16.0.0/12,10.0.0.0/8,192.168.0.0/16"
+
+REAL_CODEX="${CODEX_REAL:-/opt/node-current/bin/codex}"
+
+interactive=1
+case "${1:-}" in
+  exec|e|review|login|logout|mcp|plugin|mcp-server|app-server|remote-control|completion|update|sandbox|debug|apply|a|resume|fork|cloud|exec-server|features|help|-h|--help|-V|--version)
+    interactive=0
+    ;;
+esac
+
+if [[ "$interactive" == "1" ]]; then
+  exec "$REAL_CODEX" -c 'tui.alternate_screen="always"' "$@"
+fi
+
+exec "$REAL_CODEX" "$@"

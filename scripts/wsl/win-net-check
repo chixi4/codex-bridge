@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+HOST_IP=$(ip route | awk '/default/ {print $3; exit}')
+PROXY_PORT="${WSL_HOST_PROXY_PORT:-17898}"
+PROXY="http://${HOST_IP}:${PROXY_PORT}"
+
+echo "WSL host gateway: ${HOST_IP}"
+echo "DNS:"
+getent hosts mirrors.tuna.tsinghua.edu.cn | head -n 3 || true
+getent hosts registry.npmjs.org | head -n 3 || true
+echo
+echo "Proxy: ${PROXY}"
+
+for url in https://www.google.com https://registry.npmjs.org; do
+  echo "-- ${url}"
+  curl -fsSI --max-time 12 -x "$PROXY" "$url" | sed -n '1,8p' || true
+done
+

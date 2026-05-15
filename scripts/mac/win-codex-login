@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CONFIG="${CODEX_BRIDGE_ENV:-$HOME/.config/codex-bridge/env}"
+if [[ -f "$CONFIG" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$CONFIG"
+  set +a
+fi
+
+REMOTE_USER="${REMOTE_USER:-administrator}"
+REMOTE_HOST="${REMOTE_HOST:-10.251.1.15}"
+REMOTE="${REMOTE_USER}@${REMOTE_HOST}"
+SSH_KEY="${SSH_KEY:-$HOME/.ssh/nvidia_garlic_node05_vllm}"
+CAMPUS_SOCKS_HOST="${CAMPUS_SOCKS_HOST:-127.0.0.1}"
+CAMPUS_SOCKS_PORT="${CAMPUS_SOCKS_PORT:-11080}"
+PROXY="nc -X 5 -x ${CAMPUS_SOCKS_HOST}:${CAMPUS_SOCKS_PORT} %h %p"
+DISTRO="${WSL_DISTRO:-Ubuntu-20.04}"
+PORT="${OAUTH_CALLBACK_PORT:-1455}"
+
+if lsof -nP -iTCP:${PORT} -sTCP:LISTEN >/dev/null 2>&1; then
+  echo "Local port ${PORT} is already in use. Close the existing login tunnel/server first."
+  lsof -nP -iTCP:${PORT} -sTCP:LISTEN
+  exit 1
+fi
+
+tmp="$(mktemp -t win-codex-login.XXXXXX)"
+tunnel_pid=""
+login_pid=""
+cleanup() {
+  if [[ -n "$login_pid" ]] && kill -0 "$login_pid" 2>/dev/null; then
+    kill "$login_pid" 2>/dev/null || true
+  fi
+  if [[ -n "$tunnel_pid" ]] && kill -0 "$tunnel_pid" 2>/dev/null; then
+    kill "$tunnel_pid" 2>/dev/null || true
+  fi
+  rm -f "$tmp"
+}
+trap cleanup EXIT INT TERM
+
+ssh -N -L "${PORT}:127.0.0.1:${PORT}" \
+  -i "$SSH_KEY" \
+  -o ProxyCommand="$PROXY" \
+  -o ExitOnForwardFailure=yes \
+  -o ServerAliveInterval=15 \
+  -o ServerAliveCountMax=2 \
+  -o TCPKeepAlive=yes \
+  "$REMOTE" &
+tunnel_pid="$!"
+sleep 0.8
+
+ssh -tt -i "$SSH_KEY" \
+  -o ProxyCommand="$PROXY" \
+  -o ServerAliveInterval=15 \
+  -o ServerAliveCountMax=2 \
+  -o TCPKeepAlive=yes \
+  "$REMOTE" \
+  "wsl -d ${DISTRO} -- bash -lc 'codex login'" 2>&1 | tee "$tmp" &
+login_pid="$!"
+
+opened=0
+while kill -0 "$login_pid" 2>/dev/null; do
+  if [[ "$opened" == "0" ]]; then
+    url="$(python3 - "$tmp" <<'PY'
+import re, sys
+data = open(sys.argv[1], "rb").read().decode("utf-8", "ignore")
+data = re.sub(r"\x1b\[[0-9;?]*[A-Za-z]", "", data)
+m = re.search(r"https://auth\.openai\.com/oauth/authorize\?\S+", data)
+print(m.group(0) if m else "")
+PY
+)"
+    if [[ -n "$url" ]]; then
+      echo
+      echo "Opening local browser for remote Codex login..."
+      open "$url"
+      opened=1
+    fi
+  fi
+  sleep 0.5
+done
+
+wait "$login_pid"
