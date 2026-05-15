@@ -10,6 +10,26 @@ if [[ -f "$CONFIG" ]]; then
 fi
 
 DISTRO="${WSL_DISTRO:-Ubuntu-20.04}"
+AUTH_DISTROS="${CODEX_AUTH_DISTROS:-${DISTRO},IsaacLab-22.04}"
+
+for_auth_distro() {
+  local raw distro seen=","
+  IFS=',' read -r -a raw <<< "$AUTH_DISTROS"
+  for distro in "${raw[@]}"; do
+    distro="${distro#"${distro%%[![:space:]]*}"}"
+    distro="${distro%"${distro##*[![:space:]]}"}"
+    [[ -n "$distro" ]] || continue
+    [[ "$seen" == *",$distro,"* ]] && continue
+    seen="${seen}${distro},"
+    "$@" "$distro"
+  done
+}
+
+status_one() {
+  local distro="$1"
+  echo "== ${distro} =="
+  "$(dirname "$0")/win-ssh" "wsl -d ${distro} -- bash -lc \"if ! command -v codex >/dev/null 2>&1; then echo codex-not-installed-in-this-WSL; exit 0; fi; codex login status || true\""
+}
 
 cmd="${1:-}"
 case "$cmd" in
@@ -23,7 +43,7 @@ case "$cmd" in
     ;;
   status)
     shift || true
-    exec "$(dirname "$0")/win-ssh" "wsl -d ${DISTRO} -- bash -lc \"codex login status\""
+    for_auth_distro status_one
     ;;
   *)
     cat <<'EOF'
