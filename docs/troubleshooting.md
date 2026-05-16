@@ -106,6 +106,14 @@ win-codex logout --revoke
 
 这通常不是本项目脚本删除了远端登录文件，而是 OpenAI/ChatGPT OAuth 的服务端 token 被轮换或撤销后，已经开着的远端 Codex TUI 进程没有热更新新 token。
 
+典型红字是：
+
+```text
+Your access token could not be refreshed because your refresh token was revoked.
+```
+
+这个现象可以发生在远端 `~/.codex/auth.json` 仍然存在、`win-codex status` 仍显示登录的情况下。原因是旧 TUI 进程手里缓存的是被服务端撤销的 refresh token；它不会因为磁盘上的 auth 文件后来变了就自动恢复。
+
 判断顺序：
 
 ```bash
@@ -131,6 +139,14 @@ codex
 ```bash
 win-codex login
 ```
+
+如果你刚在 Mac 本地执行过 `codex logout/login`，或者不确定远端 token 是否已经被服务端撤销，用更直接的恢复命令：
+
+```bash
+win-codex reauth
+```
+
+然后关闭旧远端 Codex TUI，重新 `codex resume`。不要指望旧 TUI 热切换账号或热加载新 token；目前 Codex CLI 的稳定恢复方式就是重启 TUI 进程。
 
 ## WSL 不能联网
 

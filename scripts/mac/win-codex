@@ -37,6 +37,11 @@ case "$cmd" in
     shift
     exec "$(dirname "$0")/win-codex-login" "$@"
     ;;
+  reauth|relogin)
+    shift
+    CODEX_AUTH_DISTROS="${CODEX_LOGIN_DISTRO:-${DISTRO}}" "$(dirname "$0")/win-codex-logout"
+    exec "$(dirname "$0")/win-codex-login" "$@"
+    ;;
   logout)
     shift
     exec "$(dirname "$0")/win-codex-logout" "$@"
@@ -53,6 +58,7 @@ case "$cmd" in
     cat <<'EOF'
 Usage:
   win-codex login    Log in remote WSL Codex through this Mac browser
+  win-codex reauth   Forget the main remote WSL auth, then log in again
   win-codex logout   Forget remote WSL auth locally, without touching Mac auth
   win-codex logout --revoke
                      Run upstream remote Codex logout deliberately

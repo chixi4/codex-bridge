@@ -53,6 +53,7 @@ Mac：
 
 ```bash
 win-codex login
+win-codex reauth
 win-codex status
 ```
 
@@ -73,6 +74,14 @@ win-codex status
 ```
 
 主力 WSL 仍显示 `Logged in using ChatGPT` 时，关掉旧远端窗口后重新 `codex resume` 即可。
+
+如果旧窗口明确报 `Your access token could not be refreshed because your refresh token was revoked`，直接跑：
+
+```bash
+win-codex reauth
+```
+
+然后重新打开远端项目里的 `codex resume`。这个命令不会让已经开着的 Codex TUI 热更新，只负责给主力远端 WSL 重新拿一份 auth。
 
 如果登录成功但 `resume` 里看不到旧会话，通常是旧 session 留在另一个 WSL：
 
