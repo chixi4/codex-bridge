@@ -85,6 +85,15 @@ default_bool() {
   esac
 }
 
+resolve_ipv4() {
+  local host="$1"
+  if [[ "$host" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "$host"
+    return 0
+  fi
+  dig +short A "$host" 2>/dev/null | awk 'NF {print; exit}'
+}
+
 build_args() {
   local username password encoded
   username="${EZ4_USERNAME:-$(ini_get Credential Username || true)}"
@@ -130,6 +139,15 @@ build_args() {
   if [[ -z "$server" ]]; then
     echo "Missing EZ4 server. Set EZ4_SERVER or configure EZ4Connect." >&2
     return 2
+  fi
+
+  if [[ "$(default_bool "${EZ4_FORCE_IPV4:-1}" 1)" == "1" ]]; then
+    ipv4_server="$(resolve_ipv4 "$server")"
+    if [[ -n "$ipv4_server" ]]; then
+      server="$ipv4_server"
+    else
+      echo "Warning: could not resolve IPv4 address for ${server}; using hostname." >&2
+    fi
   fi
 
   EZ4_ARGS=(

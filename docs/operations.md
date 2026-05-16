@@ -78,7 +78,7 @@ KeepAlive=true
 ez4-vpn restart
 ```
 
-这会先退出 EZ4Connect GUI，避免 GUI 用旧参数重新拉起子进程；然后停止现有 `zju-connect`，打开一个新 Terminal 运行不带 `-disable-keep-alive` 的启动命令。短信验证码仍然需要你在新窗口里输入。
+这会先退出 EZ4Connect GUI，避免 GUI 用旧参数重新拉起子进程；然后停止现有 `zju-connect`，打开一个新 Terminal 运行不带 `-disable-keep-alive` 的启动命令。启动器默认还会优先把 VPN 域名解析到 IPv4，绕开目前见过的 IPv6/gVisor `panic: EOF` 路径。短信验证码仍然需要你在新窗口里输入。
 
 ## 5. 半断窗口处理
 
