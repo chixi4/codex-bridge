@@ -43,13 +43,7 @@ codex
 
 `codex` 会在当前 Windows 目录对应的 WSL 路径下启动，不会再二次询问目录，默认 YOLO。
 
-如果 Codex TUI 两侧有稳定复现的 `[` / `]`，改走直连 WSL：
-
-```bash
-win-wsl-ssh
-cd /mnt/c/Users/Administrator/Documents/dev/你的项目
-codex --dangerously-bypass-approvals-and-sandbox
-```
+如果 Terminal 窗口左右边缘有蓝灰色 `[` / `]`，那是 macOS Terminal 的 line marks。运行 `defaults write com.apple.Terminal ShowLineMarks -bool false`，或菜单 `View -> Hide Marks`。
 
 看完整长回复时按 `Ctrl+T` 进入 transcript/pager，再用 `Ctrl+U` / `Ctrl+D` 上下半页滚动，按 `q` 回主界面。
 

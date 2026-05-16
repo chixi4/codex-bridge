@@ -48,19 +48,6 @@ codex --dangerously-bypass-approvals-and-sandbox
 codex --safe
 ```
 
-如果 Windows `cmd/conhost` 这条路径让 Codex TUI 两侧出现残留的 `[` / `]`，改用直连 WSL 的干净 Linux pty：
-
-```bash
-win-wsl-ssh
-```
-
-进去后在 WSL 路径里启动 Codex，例如：
-
-```bash
-cd /mnt/c/Users/Administrator/Documents/dev/2T1
-codex --dangerously-bypass-approvals-and-sandbox
-```
-
 ## 登录
 
 本机 Mac 不劫持 `codex` 命令。远端 Codex 登录统一用：
@@ -132,7 +119,13 @@ win-codex-diagnose
 
 不要依赖 Mac 终端原生滚动条看 Codex 长回复。按 `Ctrl+T` 打开 transcript/pager，然后用 `Ctrl+U` / `Ctrl+D` 上下半页滚动，按 `q` 回主界面。
 
-如果 Codex TUI 两侧出现残留的 `[` / `]`，不要继续调 `--no-alt-screen` 或 alternate-screen 参数；那两条路已经验证过无效。直接用 `win-wsl-ssh` 绕过 Windows 控制台层。
+如果 Terminal 窗口左右边缘出现蓝灰色的 `[` / `]`，那是 macOS Terminal 的 line marks，不是远端输出。关闭方式：
+
+```bash
+defaults write com.apple.Terminal ShowLineMarks -bool false
+```
+
+也可以在 Terminal 菜单里选 `View -> Hide Marks`。
 
 详细说明见 [docs/troubleshooting.md](docs/troubleshooting.md)。
 

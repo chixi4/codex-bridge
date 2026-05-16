@@ -15,15 +15,30 @@ pgup/pgdn 上下翻页
 q         回到主界面
 ```
 
-曾经试过默认加 `--no-alt-screen`，但副作用是退出 transcript 后主界面变得很空，不像 Codex 原生界面。后来又试过强制 `tui.alternate_screen="always"`，也没有消掉边缘 `[` / `]`。这两条路都不是根因，不再作为默认方案保留。
+左右边缘的蓝灰色 `[` / `]` 不是 Codex，也不是远端 Windows/WSL 输出，而是 macOS Terminal 的 line marks。验证路径：
 
 ```bash
-win-wsl-ssh
-cd /mnt/c/Users/Administrator/Documents/dev/你的项目
-codex --dangerously-bypass-approvals-and-sandbox
+strings /System/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal | rg 'ShowLineMarks|Hide Marks'
 ```
 
-`win-wsl-ssh` 会先确保 WSL 里的 `sshd` 监听在内部 `127.0.0.1:2222`，然后让 Mac 通过 Windows SSH 的原始 `nc` 管道直连 WSL。这样 Codex TUI 落在 Linux pty 上，绕过 Windows `cmd/conhost` 的边界绘制问题。
+关闭：
+
+```bash
+defaults write com.apple.Terminal ShowLineMarks -bool false
+```
+
+或者在 Terminal 菜单里选 `View -> Hide Marks`。如果当前窗口没有立刻刷新，开一个新 Terminal 窗口即可。
+
+已经试过但无效的方向：
+
+```text
+--no-alt-screen
+tui.alternate_screen="always"
+CODEX_TUI_MODE=native/alternate/inline
+Mac -> Windows SSH -> WSL sshd 的直连 Linux pty
+```
+
+这些实验都证明问题不在 Codex TUI 参数，也不在 Windows `cmd/conhost`。
 
 ## 画面还在但完全输不进去
 

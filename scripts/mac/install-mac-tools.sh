@@ -14,7 +14,6 @@ fi
 mkdir -p "$BIN" "$CONFIG_DIR" "$LAUNCHAGENTS"
 
 install -m 0755 "$ROOT/scripts/mac/win-ssh" "$BIN/win-ssh"
-install -m 0755 "$ROOT/scripts/mac/win-wsl-ssh" "$BIN/win-wsl-ssh"
 install -m 0755 "$ROOT/scripts/mac/win-codex" "$BIN/win-codex"
 install -m 0755 "$ROOT/scripts/mac/win-codex-login" "$BIN/win-codex-login"
 install -m 0755 "$ROOT/scripts/mac/win-codex-logout" "$BIN/win-codex-logout"
@@ -38,7 +37,6 @@ fi
 
 echo "Installed Mac tools:"
 echo "  $BIN/win-ssh"
-echo "  $BIN/win-wsl-ssh"
 echo "  $BIN/win-codex"
 echo "  $BIN/win-codex-migrate-sessions"
 echo "  $BIN/wsl-mac-proxy-tunnel.sh"
