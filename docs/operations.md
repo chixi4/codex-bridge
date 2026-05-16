@@ -66,6 +66,14 @@ win-codex logout
 
 它默认只移走远端 WSL 的 `auth.json`，不会退出 Mac 本机 Codex。只有明确要调用上游 Codex 退出登录时才用 `win-codex logout --revoke`。
 
+如果你在 Mac 本地做过 `codex logout/login`，远端已经打开的 Codex TUI 可能因为服务端 token 轮换而报 auth 错误。先跑：
+
+```bash
+win-codex status
+```
+
+主力 WSL 仍显示 `Logged in using ChatGPT` 时，关掉旧远端窗口后重新 `codex resume` 即可。
+
 如果登录成功但 `resume` 里看不到旧会话，通常是旧 session 留在另一个 WSL：
 
 ```bash

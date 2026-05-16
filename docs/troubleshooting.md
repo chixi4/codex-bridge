@@ -102,6 +102,36 @@ codex login status
 win-codex logout --revoke
 ```
 
+## Mac 退出/重新登录后远端像是也掉了
+
+这通常不是本项目脚本删除了远端登录文件，而是 OpenAI/ChatGPT OAuth 的服务端 token 被轮换或撤销后，已经开着的远端 Codex TUI 进程没有热更新新 token。
+
+判断顺序：
+
+```bash
+codex login status
+win-codex status
+win-ssh
+```
+
+如果 `win-codex status` 里主力 WSL 显示 `Logged in using ChatGPT`，远端并没有真正退出。旧的 Codex 窗口如果报 token/auth 错误，直接退出旧窗口，重新进入项目后运行：
+
+```bat
+codex resume
+```
+
+或者重新运行：
+
+```bat
+codex
+```
+
+如果 `win-codex status` 显示未登录，再从 Mac 跑：
+
+```bash
+win-codex login
+```
+
 ## WSL 不能联网
 
 在 WSL：
