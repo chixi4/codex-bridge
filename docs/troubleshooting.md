@@ -15,17 +15,15 @@ pgup/pgdn 上下翻页
 q         回到主界面
 ```
 
-曾经试过默认加 `--no-alt-screen`，但副作用是退出 transcript 后主界面变得很空，不像 Codex 原生界面。后来又试过强制 `tui.alternate_screen="always"`，能改善退出 transcript 后空屏的问题，但在 Windows conhost/SSH/Mac 终端这条链路上仍可能留下边缘 `[` / `]`。
-
-现在默认让 Codex 使用原生 TUI，不额外强制 alternate screen。若画面边缘仍出现很多 `[` / `]`，通常是终端和 TUI 重绘状态不一致，不代表上文丢了。先退出当前 Codex，重新运行一次 `codex`。如果还想试不同显示策略，可以在 WSL 里临时设置：
+曾经试过默认加 `--no-alt-screen`，但副作用是退出 transcript 后主界面变得很空，不像 Codex 原生界面。后来又试过强制 `tui.alternate_screen="always"`，也没有消掉边缘 `[` / `]`。这两条路都不是根因，不再作为默认方案保留。
 
 ```bash
-CODEX_TUI_MODE=native codex      # 默认，最接近官方 CLI
-CODEX_TUI_MODE=alternate codex   # 强制 alternate screen
-CODEX_TUI_MODE=inline codex      # 让输出更接近普通 scrollback
+win-wsl-ssh
+cd /mnt/c/Users/Administrator/Documents/dev/你的项目
+codex --dangerously-bypass-approvals-and-sandbox
 ```
 
-如果是从 Windows `cmd` 里启动，优先先用默认 `codex`；这个项目不再默认强行加 `--no-alt-screen`。
+`win-wsl-ssh` 会先确保 WSL 里的 `sshd` 监听在内部 `127.0.0.1:2222`，然后让 Mac 通过 Windows SSH 的原始 `nc` 管道直连 WSL。这样 Codex TUI 落在 Linux pty 上，绕过 Windows `cmd/conhost` 的边界绘制问题。
 
 ## 画面还在但完全输不进去
 

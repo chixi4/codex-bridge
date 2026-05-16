@@ -43,6 +43,14 @@ codex
 
 `codex` 会在当前 Windows 目录对应的 WSL 路径下启动，不会再二次询问目录，默认 YOLO。
 
+如果 Codex TUI 两侧有稳定复现的 `[` / `]`，改走直连 WSL：
+
+```bash
+win-wsl-ssh
+cd /mnt/c/Users/Administrator/Documents/dev/你的项目
+codex --dangerously-bypass-approvals-and-sandbox
+```
+
 看完整长回复时按 `Ctrl+T` 进入 transcript/pager，再用 `Ctrl+U` / `Ctrl+D` 上下半页滚动，按 `q` 回主界面。
 
 ## 3. 远端 Codex 登录

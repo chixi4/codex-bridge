@@ -60,29 +60,4 @@ EOF
   esac
 fi
 
-interactive=1
-case "${1:-}" in
-  exec|e|review|login|mcp|plugin|mcp-server|app-server|remote-control|completion|update|sandbox|debug|apply|a|resume|fork|cloud|exec-server|features|help|-h|--help|-V|--version)
-    interactive=0
-    ;;
-esac
-
-if [[ "$interactive" == "1" ]]; then
-  case "${CODEX_TUI_MODE:-native}" in
-    native|"")
-      exec "$REAL_CODEX" "$@"
-      ;;
-    alternate|alt)
-      exec "$REAL_CODEX" -c 'tui.alternate_screen="always"' "$@"
-      ;;
-    inline|scrollback|no-alt-screen)
-      exec "$REAL_CODEX" --no-alt-screen "$@"
-      ;;
-    *)
-      echo "Unknown CODEX_TUI_MODE='${CODEX_TUI_MODE}'. Falling back to native." >&2
-      exec "$REAL_CODEX" "$@"
-      ;;
-  esac
-fi
-
 exec "$REAL_CODEX" "$@"

@@ -8,6 +8,7 @@
 - 本机互联网代理: `127.0.0.1:7897`
 - SSH key: `~/.ssh/nvidia_garlic_node05_vllm`
 - 远端入口: `win-ssh`
+- 直连 WSL 入口: `win-wsl-ssh`
 - 远端 Codex 登录入口: `win-codex login/status/logout`
 - 反向隧道: Mac `127.0.0.1:7897` -> Windows `127.0.0.1:17897`
 - `win-codex logout` 默认只忘记远端 WSL auth，不会退出 Mac 本机 Codex。
@@ -59,7 +60,7 @@ IsaacLab-22.04    名字像 Isaac Lab，但实测没有 isaaclab/isaacsim/isaacg
 - Check command: `/usr/local/bin/win-net-check`
 - DNS 固定在 `/etc/resolv.conf`
 - `/etc/wsl.conf` 禁止 WSL 自动重写 DNS
-- TUI 默认策略: `CODEX_TUI_MODE=native`
+- WSL sshd: `127.0.0.1:2222`，只在 WSL 内部监听，由 `win-wsl-ssh` 自动启动。
 
 代理环境由 `/usr/local/bin/codex` 动态设置：
 
