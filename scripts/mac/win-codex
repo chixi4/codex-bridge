@@ -53,7 +53,9 @@ case "$cmd" in
     cat <<'EOF'
 Usage:
   win-codex login    Log in remote WSL Codex through this Mac browser
-  win-codex logout   Log out remote WSL Codex
+  win-codex logout   Forget remote WSL auth locally, without touching Mac auth
+  win-codex logout --revoke
+                     Run upstream remote Codex logout deliberately
   win-codex status   Show remote WSL Codex login status
   win-codex migrate-sessions [from] [to]
 EOF

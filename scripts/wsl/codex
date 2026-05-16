@@ -11,15 +11,78 @@ export NO_PROXY="localhost,127.0.0.1,::1,172.16.0.0/12,10.0.0.0/8,192.168.0.0/16
 
 REAL_CODEX="${CODEX_REAL:-/opt/node-current/bin/codex}"
 
+forget_auth() {
+  local auth_dir auth_file backup ts
+  auth_dir="${CODEX_HOME:-$HOME/.codex}"
+  auth_file="${auth_dir}/auth.json"
+
+  mkdir -p "$auth_dir"
+  if [[ ! -f "$auth_file" ]]; then
+    echo "Not logged in: ${auth_file} does not exist"
+    return 0
+  fi
+
+  ts=$(date +%Y%m%d-%H%M%S)
+  backup="${auth_dir}/auth.logout-backup.${ts}.json"
+  mv "$auth_file" "$backup"
+  chmod 600 "$backup" 2>/dev/null || true
+  echo "Forgot local Codex auth on this WSL only."
+  echo "Backup: ${backup}"
+}
+
+if [[ "${1:-}" == "logout" ]]; then
+  shift
+  case "${1:-}" in
+    --revoke)
+      shift
+      exec "$REAL_CODEX" logout "$@"
+      ;;
+    -h|--help)
+      cat <<'EOF'
+Usage:
+  codex logout           Forget local WSL auth.json only
+  codex logout --revoke  Run the upstream Codex logout command
+
+The default is intentionally local-only so this remote bridge does not revoke
+tokens that may also be in use by your Mac Codex app/CLI.
+EOF
+      exit 0
+      ;;
+    "")
+      forget_auth
+      exit 0
+      ;;
+    *)
+      echo "Unknown codex logout option: $1" >&2
+      echo "Use 'codex logout --revoke' only when you really want upstream logout." >&2
+      exit 2
+      ;;
+  esac
+fi
+
 interactive=1
 case "${1:-}" in
-  exec|e|review|login|logout|mcp|plugin|mcp-server|app-server|remote-control|completion|update|sandbox|debug|apply|a|resume|fork|cloud|exec-server|features|help|-h|--help|-V|--version)
+  exec|e|review|login|mcp|plugin|mcp-server|app-server|remote-control|completion|update|sandbox|debug|apply|a|resume|fork|cloud|exec-server|features|help|-h|--help|-V|--version)
     interactive=0
     ;;
 esac
 
 if [[ "$interactive" == "1" ]]; then
-  exec "$REAL_CODEX" -c 'tui.alternate_screen="always"' "$@"
+  case "${CODEX_TUI_MODE:-native}" in
+    native|"")
+      exec "$REAL_CODEX" "$@"
+      ;;
+    alternate|alt)
+      exec "$REAL_CODEX" -c 'tui.alternate_screen="always"' "$@"
+      ;;
+    inline|scrollback|no-alt-screen)
+      exec "$REAL_CODEX" --no-alt-screen "$@"
+      ;;
+    *)
+      echo "Unknown CODEX_TUI_MODE='${CODEX_TUI_MODE}'. Falling back to native." >&2
+      exec "$REAL_CODEX" "$@"
+      ;;
+  esac
 fi
 
 exec "$REAL_CODEX" "$@"

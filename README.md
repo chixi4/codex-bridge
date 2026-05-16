@@ -60,6 +60,12 @@ win-codex logout
 
 `win-codex login` 会在 Mac 上开 `localhost:1455` 到远端 WSL 的临时回调隧道，并自动打开本机浏览器登录 OpenAI/Google。
 
+`win-codex logout` 默认只移走远端 WSL 里的 `~/.codex/auth.json`，不会运行 Mac 本机的 `codex logout`，也尽量避免影响同账号的 Mac Codex app/CLI。只有明确要执行上游 Codex 退出登录时才用：
+
+```bash
+win-codex logout --revoke
+```
+
 ## 安装
 
 Mac：
@@ -112,6 +118,8 @@ win-codex-diagnose
 ## 查看完整回复
 
 不要依赖 Mac 终端原生滚动条看 Codex 长回复。按 `Ctrl+T` 打开 transcript/pager，然后用 `Ctrl+U` / `Ctrl+D` 上下半页滚动，按 `q` 回主界面。
+
+如果 Codex TUI 两侧出现残留的 `[` / `]`，那是远端终端和 TUI 重绘的显示问题，不是内容丢失。当前默认使用 Codex 原生 TUI；需要临时切换显示策略时，在 WSL 里设置 `CODEX_TUI_MODE=alternate` 或 `CODEX_TUI_MODE=inline` 后再启动 `codex`。
 
 详细说明见 [docs/troubleshooting.md](docs/troubleshooting.md)。
 

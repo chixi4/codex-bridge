@@ -11,11 +11,37 @@ fi
 
 DISTRO="${WSL_DISTRO:-Ubuntu-20.04}"
 AUTH_DISTROS="${CODEX_AUTH_DISTROS:-${DISTRO},IsaacLab-22.04}"
+REVOKE=0
+
+if [[ "${1:-}" == "--revoke" ]]; then
+  REVOKE=1
+  shift
+fi
 
 logout_one() {
   local distro="$1"
   echo "== ${distro} =="
-  "$(dirname "$0")/win-ssh" "wsl -d ${distro} -- bash -lc \"if ! command -v codex >/dev/null 2>&1; then echo codex-not-installed-in-this-WSL; exit 0; fi; codex logout || true\""
+  if [[ "$REVOKE" == "1" ]]; then
+    "$(dirname "$0")/win-ssh" "wsl -d ${distro} -- bash -lc \"if ! command -v codex >/dev/null 2>&1; then echo codex-not-installed-in-this-WSL; exit 0; fi; codex logout --revoke || true\""
+    return
+  fi
+
+  "$(dirname "$0")/win-ssh" "wsl -d ${distro} -- bash -lc '
+set -euo pipefail
+auth_dir=\"\${CODEX_HOME:-\$HOME/.codex}\"
+auth_file=\"\${auth_dir}/auth.json\"
+mkdir -p \"\$auth_dir\"
+if [[ ! -f \"\$auth_file\" ]]; then
+  echo \"not-logged-in: \$auth_file does not exist\"
+  exit 0
+fi
+ts=\$(date +%Y%m%d-%H%M%S)
+backup=\"\${auth_dir}/auth.logout-backup.\${ts}.json\"
+mv \"\$auth_file\" \"\$backup\"
+chmod 600 \"\$backup\" 2>/dev/null || true
+echo \"forgot remote WSL auth only\"
+echo \"backup: \$backup\"
+'"
 }
 
 seen=","
@@ -28,3 +54,8 @@ for distro in "${targets[@]}"; do
   seen="${seen}${distro},"
   logout_one "$distro"
 done
+
+if [[ "$REVOKE" == "0" ]]; then
+  echo "Remote WSL auth files were removed locally only. Mac Codex auth was not touched."
+  echo "Use 'win-codex logout --revoke' only if you deliberately want upstream Codex logout."
+fi

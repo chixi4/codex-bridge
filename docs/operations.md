@@ -51,9 +51,18 @@ Mac：
 
 ```bash
 win-codex login
+win-codex status
 ```
 
 如果登录掉了，不要用 device code。Team 禁用了 device code，走普通网页登录即可。
+
+如果需要清掉远端登录态：
+
+```bash
+win-codex logout
+```
+
+它默认只移走远端 WSL 的 `auth.json`，不会退出 Mac 本机 Codex。只有明确要调用上游 Codex 退出登录时才用 `win-codex logout --revoke`。
 
 如果登录成功但 `resume` 里看不到旧会话，通常是旧 session 留在另一个 WSL：
 

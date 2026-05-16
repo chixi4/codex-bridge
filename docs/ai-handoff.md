@@ -27,13 +27,14 @@ ez4-vpn restart
 
 远端 Windows 才提供 `codex.cmd`，它把 Windows 当前目录转换成 WSL 路径，然后调用 WSL 的 `/usr/local/bin/codex`。
 
-WSL 的 `/usr/local/bin/codex` 不是真正的 Codex CLI，而是代理包装器；真实 CLI 在 `/opt/node-current/bin/codex`。包装器设置代理，并在交互模式下显式使用 Codex 原生 alternate-screen TUI，避免 `--no-alt-screen` 带来的空白主界面。
+WSL 的 `/usr/local/bin/codex` 不是真正的 Codex CLI，而是代理包装器；真实 CLI 在 `/opt/node-current/bin/codex`。包装器设置代理，默认让交互式 Codex 使用上游原生 TUI。若显示异常，可用 `CODEX_TUI_MODE=alternate` 或 `CODEX_TUI_MODE=inline` 临时切换。
 
 ## 不要回退的点
 
 - 不要把 Mac 本机命令改成 `codex`。
 - 不要让远端 Windows 的 `codex` 再询问目录。
-- 不要默认加 `--no-alt-screen`。它会让 transcript 退出后的主界面变空，用户更希望保留 Codex 原生界面。长回复回看用 `Ctrl+T` 的 transcript/pager。
+- 不要默认加 `--no-alt-screen`。它会让 transcript 退出后的主界面变空。长回复回看用 `Ctrl+T` 的 transcript/pager。
+- 不要让默认 logout 影响用户 Mac 端登录。`win-codex logout` 和远端 wrapper 的 `codex logout` 默认只移走远端 WSL 的 `auth.json`；真正上游退出登录必须显式 `--revoke`。
 - 不要用 device-code 登录，当前 Team 禁用了。
 - 不要把 EZ4Connect 密码、私钥、Codex auth 文件提交进仓库。
 - 如果 GUI 启动的 `zju-connect` 带 `-disable-keep-alive`，用 `ez4-vpn restart` 切到受控启动器。这个命令沿用本机 EZ4Connect 配置文件，但仓库里不保存真实密码。
