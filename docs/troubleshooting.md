@@ -242,7 +242,7 @@ github.com/mythologyli/zju-connect/stack/gvisor.(*Stack).Run
 ez4-vpn restart
 ```
 
-它直接运行 `/Applications/EZ4Connect.app/Contents/MacOS/zju-connect`，默认不加 `-disable-keep-alive`，并且会把 VPN 域名优先解析成 IPv4，避免日志里这种容易崩的 IPv6 路径：
+它直接运行 `/Applications/EZ4Connect.app/Contents/MacOS/zju-connect`，默认不加 `-disable-keep-alive`，并且会把 VPN 域名优先解析成 IPv4，避免日志里这种容易崩的 IPv6 路径。当前版本还会启动 terminal-loop；如果 `zju-connect` 因 EOF/panic 崩溃后把内层 supervisor 也带退出，外层 terminal-loop 会继续重启 supervisor。
 
 ```text
 Socket: connected to: [2001:250:219:a0ff::2]:443

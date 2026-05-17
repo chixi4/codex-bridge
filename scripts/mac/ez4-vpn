@@ -15,6 +15,8 @@ EZ4_LOG="${EZ4_LOG:-$HOME/Library/Application Support/EZ4Connect/zjuconnect.manu
 EZ4_APP_LOG="${EZ4_APP_LOG:-$HOME/Library/Application Support/EZ4Connect/zjuconnect.log}"
 EZ4_PID_PATTERN="${EZ4_PID_PATTERN:-/Applications/EZ4Connect.app/Contents/MacOS/zju-connect}"
 EZ4_SUPERVISOR_PID="${EZ4_SUPERVISOR_PID:-$HOME/Library/Application Support/EZ4Connect/zjuconnect.supervisor.pid}"
+EZ4_TERMINAL_LOOP_PID="${EZ4_TERMINAL_LOOP_PID:-$HOME/Library/Application Support/EZ4Connect/zjuconnect.terminal-loop.pid}"
+EZ4_STOP_FILE="${EZ4_STOP_FILE:-$HOME/Library/Application Support/EZ4Connect/zjuconnect.stop}"
 
 ini_get() {
   local section="$1" key="$2" file="${3:-$EZ4_CONFIG}"
@@ -190,6 +192,19 @@ status() {
   echo "EZ4Connect status"
   echo "================="
   echo
+  echo "-- Terminal loop"
+  if [[ -f "$EZ4_TERMINAL_LOOP_PID" ]]; then
+    local lpid
+    lpid="$(cat "$EZ4_TERMINAL_LOOP_PID" 2>/dev/null || true)"
+    if [[ -n "$lpid" ]] && kill -0 "$lpid" 2>/dev/null; then
+      ps -p "$lpid" -o pid,lstart,command | redact
+    else
+      echo "stale terminal loop pid: ${lpid:-<empty>}"
+    fi
+  else
+    echo "terminal loop pid file not found"
+  fi
+  echo
   echo "-- Supervisor"
   if [[ -f "$EZ4_SUPERVISOR_PID" ]]; then
     local spid
@@ -265,13 +280,17 @@ run_supervisor() {
   fi
   mkdir -p "$(dirname "$EZ4_LOG")"
   echo "$$" > "$EZ4_SUPERVISOR_PID"
-  trap 'rm -f "$EZ4_SUPERVISOR_PID"' EXIT
+  trap '[[ "$(cat "$EZ4_SUPERVISOR_PID" 2>/dev/null || true)" == "$$" ]] && rm -f "$EZ4_SUPERVISOR_PID"' EXIT
 
   attempt=0
   max_delay="${EZ4_RESTART_MAX_DELAY:-60}"
   restart_enabled="$(default_bool "${EZ4_AUTO_RESTART:-1}" 1)"
 
   while true; do
+    if [[ -f "$EZ4_STOP_FILE" ]]; then
+      echo "Stop marker found; supervisor exiting at $(date '+%Y-%m-%d %H:%M:%S')" | tee -a "$EZ4_LOG"
+      exit 0
+    fi
     build_args
     echo
     echo "================================================================"
@@ -300,6 +319,36 @@ run_supervisor() {
   done
 }
 
+run_terminal_loop() {
+  local code delay
+  mkdir -p "$(dirname "$EZ4_LOG")"
+  rm -f "$EZ4_STOP_FILE"
+  echo "$$" > "$EZ4_TERMINAL_LOOP_PID"
+  trap '[[ "$(cat "$EZ4_TERMINAL_LOOP_PID" 2>/dev/null || true)" == "$$" ]] && rm -f "$EZ4_TERMINAL_LOOP_PID"' EXIT
+
+  delay="${EZ4_TERMINAL_RESTART_DELAY:-5}"
+  while true; do
+    if [[ -f "$EZ4_STOP_FILE" ]]; then
+      echo "Stop marker found; terminal loop exiting at $(date '+%Y-%m-%d %H:%M:%S')" | tee -a "$EZ4_LOG"
+      exit 0
+    fi
+
+    set +e
+    "$0" supervise
+    code="$?"
+    set -e
+
+    if [[ -f "$EZ4_STOP_FILE" ]]; then
+      echo "Stop marker found after supervisor exit; terminal loop exiting at $(date '+%Y-%m-%d %H:%M:%S')" | tee -a "$EZ4_LOG"
+      exit 0
+    fi
+
+    echo "ez4-vpn supervise exited with code ${code} at $(date '+%Y-%m-%d %H:%M:%S')" | tee -a "$EZ4_LOG"
+    echo "Terminal loop will restart supervisor in ${delay}s. Press Ctrl-C or run 'ez4-vpn stop' to stop." | tee -a "$EZ4_LOG"
+    sleep "$delay"
+  done
+}
+
 start_terminal() {
   local tool="${HOME}/.local/bin/ez4-vpn"
   if [[ ! -x "$tool" ]]; then
@@ -312,10 +361,20 @@ start_terminal() {
     -e 'do script (item 1 of argv)' \
     -e 'end tell' \
     -e 'end run' \
-    "$tool supervise"
+    "$tool terminal-loop"
 }
 
 stop_vpn() {
+  mkdir -p "$(dirname "$EZ4_STOP_FILE")"
+  touch "$EZ4_STOP_FILE"
+  if [[ -f "$EZ4_TERMINAL_LOOP_PID" ]]; then
+    local lpid
+    lpid="$(cat "$EZ4_TERMINAL_LOOP_PID" 2>/dev/null || true)"
+    if [[ -n "$lpid" ]] && [[ "$lpid" != "$$" ]] && kill -0 "$lpid" 2>/dev/null; then
+      kill "$lpid" 2>/dev/null || true
+    fi
+    rm -f "$EZ4_TERMINAL_LOOP_PID"
+  fi
   if [[ -f "$EZ4_SUPERVISOR_PID" ]]; then
     local spid
     spid="$(cat "$EZ4_SUPERVISOR_PID" 2>/dev/null || true)"
@@ -324,6 +383,7 @@ stop_vpn() {
     fi
     rm -f "$EZ4_SUPERVISOR_PID"
   fi
+  pkill -f "ez4-vpn terminal-loop" 2>/dev/null || true
   pkill -f "ez4-vpn supervise" 2>/dev/null || true
   pkill -f "$EZ4_PID_PATTERN" 2>/dev/null || true
 }
@@ -339,6 +399,9 @@ case "${1:-status}" in
   supervise|supervisor|watch)
     run_supervisor
     ;;
+  terminal-loop|loop|forever)
+    run_terminal_loop
+    ;;
   start|start-terminal)
     start_terminal
     ;;
@@ -349,6 +412,7 @@ case "${1:-status}" in
     fi
     stop_vpn
     sleep 1
+    rm -f "$EZ4_STOP_FILE"
     start_terminal
     ;;
   stop)
@@ -372,6 +436,7 @@ Usage:
   ez4-vpn status          Show process, ports, and fatal log markers
   ez4-vpn start           Open a Terminal running supervised zju-connect
   ez4-vpn supervise       Run supervised zju-connect in this terminal
+  ez4-vpn terminal-loop   Keep the supervisor itself alive in this terminal
   ez4-vpn foreground      Run controlled zju-connect once, without auto-restart
   ez4-vpn restart         Quit EZ4Connect GUI, stop zju-connect, then open supervised launcher
   ez4-vpn stop            Stop zju-connect and the supervisor

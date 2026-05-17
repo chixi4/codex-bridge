@@ -92,7 +92,7 @@ win-codex logout --keep-tmux
 
 ## EZ4Connect 稳定性
 
-`ez4-vpn start` / `ez4-vpn restart` 会打开一个带 supervisor 的 EZ4Connect 终端。如果 `zju-connect` 因 `panic: EOF` 崩溃，supervisor 会自动重启它；如果重启需要短信验证码，就在那个终端里输入验证码。
+`ez4-vpn start` / `ez4-vpn restart` 会打开一个带 terminal-loop + supervisor 的 EZ4Connect 终端。如果 `zju-connect` 因 `panic: EOF` 崩溃，supervisor 会自动重启它；如果 supervisor 自己异常退出，terminal-loop 会把 supervisor 再拉起来。如果重启需要短信验证码，就在那个终端里输入验证码。
 
 ```bash
 ez4-vpn status
@@ -100,7 +100,7 @@ ez4-vpn restart
 ez4-vpn stop
 ```
 
-这不会让已经断掉的 SSH 原地复活，但能避免 VPN 崩溃后一直停在 `11080` 不监听的状态。
+这不会让已经断掉的 SSH 原地复活，也不能修复 `zju-connect` 上游的 gvisor 崩溃 bug，但能避免 VPN 崩溃后一直停在 `11080` 不监听的状态。
 
 ## 安装
 

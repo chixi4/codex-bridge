@@ -106,6 +106,8 @@ KeepAlive=true
 ez4-vpn restart
 ```
 
+`ez4-vpn restart` 会打开一个 terminal-loop。它会先拉起 supervisor，supervisor 再拉起 `zju-connect`；如果 `zju-connect` 因 EOF/panic 退出，supervisor 会重启它；如果 supervisor 自己异常退出，terminal-loop 会重启 supervisor。
+
 如果 `ez4-vpn status` 显示进程在但 `11080/11081` 没有监听，并提示 `waiting for an SMS code`，说明 VPN 还停在短信验证码阶段。去新开的 EZ4Connect 终端输入短信验证码，端口起来之后再继续 `win-ssh`。
 
 ## 5. 夜间断连/重启后恢复
