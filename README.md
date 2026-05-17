@@ -42,6 +42,12 @@ codex
 codex --dangerously-bypass-approvals-and-sandbox
 ```
 
+远端 `codex` 默认还会放进 WSL tmux 会话。Mac 切 Wi-Fi/热点导致 SSH 断开时，Codex 进程仍留在远端；网络恢复后重新 `win-ssh`，回到同一个项目目录再运行 `codex`，会接回原来的会话。临时不想用 tmux 时：
+
+```bat
+codex --no-tmux
+```
+
 需要保守模式时：
 
 ```bat

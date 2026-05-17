@@ -35,6 +35,7 @@ connection reset by peer
 - Codex wrapper: `C:\Users\Administrator\bin\codex.cmd`
 - 兼容快捷入口: `C:\Users\Administrator\bin\cx.cmd`
 - Windows portproxy: `<WSL gateway>:17898 -> 127.0.0.1:17897`
+- 夜间断连曾定位到 Windows 蓝屏/异常重启，而不是 Windows Update：`2026-05-15 22:33` 启动前有 `Kernel-Power 41`、`EventLog 6008`、BugCheck `0x3B`；5 月 9/10/11 多次 BugCheck `0x113`，伴随大量 `nvlddmkm` 事件和 `C:\Windows\LiveKernelReports\WATCHDOG...dmp`，优先怀疑 NVIDIA/图形栈/GPU watchdog。
 
 远端 Windows 使用方式：
 

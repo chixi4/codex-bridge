@@ -8,6 +8,7 @@ if "%CODEX_BRIDGE_WSL_DISTRO%"=="" (
 )
 set "MODE=yolo"
 set "WORK=%CD%"
+set "USE_TMUX=1"
 
 if /I "%~1"=="--version" goto direct
 if /I "%~1"=="-V" goto direct
@@ -24,6 +25,8 @@ if /I "%~1"=="--yolo" set "MODE=yolo" & shift & goto parse
 if /I "%~1"=="yolo" set "MODE=yolo" & shift & goto parse
 if /I "%~1"=="--auto" set "MODE=auto" & shift & goto parse
 if /I "%~1"=="--safe" set "MODE=safe" & shift & goto parse
+if /I "%~1"=="--tmux" set "USE_TMUX=1" & shift & goto parse
+if /I "%~1"=="--no-tmux" set "USE_TMUX=0" & shift & goto parse
 if /I "%~1"=="--workspace" set "WORK=%~2" & shift & shift & goto parse
 if /I "%~1"=="-C" set "WORK=%~2" & shift & shift & goto parse
 
@@ -62,15 +65,7 @@ if errorlevel 1 (
 )
 
 echo Starting Codex in !WSLWORK!
-if /I "!MODE!"=="yolo" (
-  wsl -d %DISTRO% -- bash -lc "cd ""$1"" && exec codex --dangerously-bypass-approvals-and-sandbox" codex "!WSLWORK!"
-  exit /b !ERRORLEVEL!
-)
-if /I "!MODE!"=="safe" (
-  wsl -d %DISTRO% -- bash -lc "cd ""$1"" && exec codex" codex "!WSLWORK!"
-  exit /b !ERRORLEVEL!
-)
-wsl -d %DISTRO% -- bash -lc "cd ""$1"" && exec codex -a never -s danger-full-access" codex "!WSLWORK!"
+wsl -d %DISTRO% -- bash -lc "if command -v codex-bridge-launch >/dev/null 2>&1; then exec codex-bridge-launch ""$1"" ""$2"" ""$3""; fi; cd ""$2"" && if [ ""$1"" = yolo ]; then exec codex --dangerously-bypass-approvals-and-sandbox; elif [ ""$1"" = safe ]; then exec codex; else exec codex -a never -s danger-full-access; fi" codex "!MODE!" "!WSLWORK!" "!USE_TMUX!"
 exit /b !ERRORLEVEL!
 
 :direct

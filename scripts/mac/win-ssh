@@ -14,12 +14,15 @@ REMOTE_HOST="${REMOTE_HOST:-10.251.1.15}"
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/nvidia_garlic_node05_vllm}"
 CAMPUS_SOCKS_HOST="${CAMPUS_SOCKS_HOST:-127.0.0.1}"
 CAMPUS_SOCKS_PORT="${CAMPUS_SOCKS_PORT:-11080}"
+SSH_SERVER_ALIVE_INTERVAL="${SSH_SERVER_ALIVE_INTERVAL:-60}"
+SSH_SERVER_ALIVE_COUNT_MAX="${SSH_SERVER_ALIVE_COUNT_MAX:-10}"
+SSH_TCP_KEEP_ALIVE="${SSH_TCP_KEEP_ALIVE:-yes}"
 
 exec ssh \
   -i "$SSH_KEY" \
-  -o ServerAliveInterval=15 \
-  -o ServerAliveCountMax=2 \
-  -o TCPKeepAlive=yes \
+  -o ServerAliveInterval="$SSH_SERVER_ALIVE_INTERVAL" \
+  -o ServerAliveCountMax="$SSH_SERVER_ALIVE_COUNT_MAX" \
+  -o TCPKeepAlive="$SSH_TCP_KEEP_ALIVE" \
   -o IdentitiesOnly=yes \
   -o ProxyCommand="nc -X 5 -x ${CAMPUS_SOCKS_HOST}:${CAMPUS_SOCKS_PORT} %h %p" \
   "${REMOTE_USER}@${REMOTE_HOST}" "$@"

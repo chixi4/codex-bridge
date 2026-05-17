@@ -205,6 +205,13 @@ status() {
   echo
   echo "-- Ports"
   lsof -nP -iTCP:${CAMPUS_SOCKS_PORT:-11080} -iTCP:${EZ4_HTTP_PORT:-11081} -sTCP:LISTEN 2>/dev/null || true
+  if pgrep -f "$EZ4_PID_PATTERN" >/dev/null 2>&1 && ! lsof -nP -iTCP:${CAMPUS_SOCKS_PORT:-11080} -sTCP:LISTEN >/dev/null 2>&1; then
+    echo
+    echo "Warning: zju-connect is running but the SOCKS port is not listening yet."
+    if [[ -f "$EZ4_LOG" ]] && tail -n 20 "$EZ4_LOG" | grep -q "Please enter your SMS code"; then
+      echo "It is waiting for an SMS code in the EZ4Connect terminal window."
+    fi
+  fi
   echo
   echo "-- Recent fatal log"
   if [[ -f "$EZ4_APP_LOG" ]]; then

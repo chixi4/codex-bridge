@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG="${CODEX_BRIDGE_ENV:-$HOME/.config/codex-bridge/env}"
+if [[ -f "$CONFIG" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$CONFIG"
+  set +a
+fi
+
+if [[ -n "${CODEX_BRIDGE_ROOT:-}" ]]; then
+  ROOT="$CODEX_BRIDGE_ROOT"
+elif [[ -f "$SCRIPT_DIR/../../scripts/windows/reboot-report.ps1" ]]; then
+  ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+elif [[ -f "$HOME/Documents/dev/cardputer/codex-bridge/scripts/windows/reboot-report.ps1" ]]; then
+  ROOT="$HOME/Documents/dev/cardputer/codex-bridge"
+else
+  echo "Cannot find codex-bridge root. Set CODEX_BRIDGE_ROOT in ~/.config/codex-bridge/env." >&2
+  exit 1
+fi
+HOURS="${1:-72}"
+
+"$SCRIPT_DIR/win-ssh" "cmd.exe /c \"set CODEX_BRIDGE_REPORT_HOURS=${HOURS}&& powershell.exe -NoProfile -ExecutionPolicy Bypass -Command -\"" < "$ROOT/scripts/windows/reboot-report.ps1"

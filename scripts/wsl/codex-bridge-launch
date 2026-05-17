@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+MODE="${1:-yolo}"
+WORKDIR="${2:-$PWD}"
+USE_TMUX="${3:-${CODEX_BRIDGE_TMUX:-1}}"
+
+case "$MODE" in
+  yolo)
+    CODEX_ARGS=(--dangerously-bypass-approvals-and-sandbox)
+    ;;
+  safe)
+    CODEX_ARGS=()
+    ;;
+  auto)
+    CODEX_ARGS=(-a never -s danger-full-access)
+    ;;
+  *)
+    echo "Unknown Codex launch mode: $MODE" >&2
+    exit 2
+    ;;
+esac
+
+cd "$WORKDIR"
+
+if [[ "$USE_TMUX" != "0" && -z "${TMUX:-}" && -t 0 && -t 1 ]] && command -v tmux >/dev/null 2>&1; then
+  if [[ -z "${TERM:-}" || "$TERM" == "dumb" ]]; then
+    export TERM=xterm-256color
+  fi
+
+  if command -v sha1sum >/dev/null 2>&1; then
+    HASH="$(printf '%s' "$PWD" | sha1sum | awk '{print $1}' | cut -c1-12)"
+  else
+    HASH="$(printf '%s' "$PWD" | cksum | awk '{print $1}')"
+  fi
+  SESSION="codex_${HASH}"
+
+  TMUX_CMD="cd $(printf '%q' "$PWD") && exec codex"
+  for arg in "${CODEX_ARGS[@]}"; do
+    TMUX_CMD="${TMUX_CMD} $(printf '%q' "$arg")"
+  done
+
+  echo "Attaching resilient Codex session: ${SESSION}"
+  echo "Detach without closing Codex: Ctrl-b then d"
+  exec tmux -u new-session -A -s "$SESSION" "$TMUX_CMD"
+fi
+
+exec codex "${CODEX_ARGS[@]}"

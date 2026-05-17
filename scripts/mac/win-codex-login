@@ -18,6 +18,9 @@ CAMPUS_SOCKS_PORT="${CAMPUS_SOCKS_PORT:-11080}"
 PROXY="nc -X 5 -x ${CAMPUS_SOCKS_HOST}:${CAMPUS_SOCKS_PORT} %h %p"
 DISTRO="${CODEX_LOGIN_DISTRO:-${WSL_DISTRO:-Ubuntu-20.04}}"
 PORT="${OAUTH_CALLBACK_PORT:-1455}"
+SSH_SERVER_ALIVE_INTERVAL="${SSH_SERVER_ALIVE_INTERVAL:-60}"
+SSH_SERVER_ALIVE_COUNT_MAX="${SSH_SERVER_ALIVE_COUNT_MAX:-10}"
+SSH_TCP_KEEP_ALIVE="${SSH_TCP_KEEP_ALIVE:-yes}"
 
 if lsof -nP -iTCP:${PORT} -sTCP:LISTEN >/dev/null 2>&1; then
   echo "Local port ${PORT} is already in use. Close the existing login tunnel/server first."
@@ -43,18 +46,18 @@ ssh -N -L "${PORT}:127.0.0.1:${PORT}" \
   -i "$SSH_KEY" \
   -o ProxyCommand="$PROXY" \
   -o ExitOnForwardFailure=yes \
-  -o ServerAliveInterval=15 \
-  -o ServerAliveCountMax=2 \
-  -o TCPKeepAlive=yes \
+  -o ServerAliveInterval="$SSH_SERVER_ALIVE_INTERVAL" \
+  -o ServerAliveCountMax="$SSH_SERVER_ALIVE_COUNT_MAX" \
+  -o TCPKeepAlive="$SSH_TCP_KEEP_ALIVE" \
   "$REMOTE" &
 tunnel_pid="$!"
 sleep 0.8
 
 ssh -tt -i "$SSH_KEY" \
   -o ProxyCommand="$PROXY" \
-  -o ServerAliveInterval=15 \
-  -o ServerAliveCountMax=2 \
-  -o TCPKeepAlive=yes \
+  -o ServerAliveInterval="$SSH_SERVER_ALIVE_INTERVAL" \
+  -o ServerAliveCountMax="$SSH_SERVER_ALIVE_COUNT_MAX" \
+  -o TCPKeepAlive="$SSH_TCP_KEEP_ALIVE" \
   "$REMOTE" \
   "wsl -d ${DISTRO} -- bash -lc 'codex login'" 2>&1 | tee "$tmp" &
 login_pid="$!"

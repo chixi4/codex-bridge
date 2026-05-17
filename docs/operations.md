@@ -106,6 +106,57 @@ KeepAlive=true
 ez4-vpn restart
 ```
 
+如果 `ez4-vpn status` 显示进程在但 `11080/11081` 没有监听，并提示 `waiting for an SMS code`，说明 VPN 还停在短信验证码阶段。去新开的 EZ4Connect 终端输入短信验证码，端口起来之后再继续 `win-ssh`。
+
+## 5. 夜间断连/重启后恢复
+
+先分清是 Mac 侧 VPN 掉了，还是远端 Windows 真的重启了：
+
+```bash
+ez4-vpn status
+win-reboot-report 96
+```
+
+`win-reboot-report` 会拉最近 96 小时的 Windows 启停、Kernel-Power、BugCheck、Windows Update 和 UpdateOrchestrator 事件。常见判断：
+
+- `User32 1074`：有人或系统组件发起了正常重启，消息里通常会写 Windows Update 或进程名。
+- `EventLog 6008` 或 `Kernel-Power 41`：非正常关机，偏向断电、蓝屏、强制重启或硬件/驱动问题。
+- `WindowsUpdateClient` 搭配 `1074`：大概率是更新计划重启。
+
+恢复顺序：
+
+```bash
+ez4-vpn restart
+# 如果提示短信验证码，先在 EZ4Connect 终端输入验证码
+win-ssh
+win-codex status
+win-codex reauth   # 仅当 Codex 报 token revoked 或未登录时需要
+```
+
+训练任务如果已经被远端重启杀掉，只能从最近 checkpoint 恢复；如果只是 SSH/VPN 断了，远端训练进程可能还在，重新 `win-ssh` 后先查任务管理器、日志或训练进度窗口，不要立刻重开同名训练。
+
+## 6. 切 Wi-Fi/热点为什么会瞬断
+
+`win-ssh` 是普通 SSH over SOCKS。Mac 切 Wi-Fi/热点时，旧网络接口和 EZ4Connect 到校园网的 TLS/TCP 会话可能被系统立即拆掉；这类 `EOF` 不是 keepalive 能救的。keepalive 只能处理“网络黑洞但 socket 还没关”的情况。
+
+为了让体验可恢复，远端 Windows 的 `codex` 默认会把 Codex 放进 WSL tmux 会话。断线后：
+
+```bash
+win-ssh
+```
+
+然后在同一个 Windows 项目目录里：
+
+```bat
+codex
+```
+
+会重新 attach 到同一个远端会话。临时绕过 tmux：
+
+```bat
+codex --no-tmux
+```
+
 这会先退出 EZ4Connect GUI，避免 GUI 用旧参数重新拉起子进程；然后停止现有 `zju-connect`，打开一个新 Terminal 运行不带 `-disable-keep-alive` 的启动命令。启动器默认还会优先把 VPN 域名解析到 IPv4，绕开目前见过的 IPv6/gVisor `panic: EOF` 路径。短信验证码仍然需要你在新窗口里输入。
 
 ## 5. 半断窗口处理

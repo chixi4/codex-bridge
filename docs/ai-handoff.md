@@ -12,6 +12,8 @@ codex
 
 默认行为必须是 YOLO、当前目录启动、无需二次询问目录，并保持 Codex 原生 TUI。
 
+为了承受 Mac 切 Wi-Fi/热点导致的 SSH 瞬断，远端 Windows 的 `codex` 默认通过 WSL `codex-bridge-launch` 进入 tmux。断线后用户重新 `win-ssh` 并在同一项目目录运行 `codex`，应 attach 回同一个会话；`codex --no-tmux` 才绕过。
+
 ## 关键设计
 
 Mac 不劫持 `codex`，避免和本机未来安装的 Codex CLI 冲突。Mac 只提供：
@@ -30,12 +32,15 @@ ez4-vpn restart
 
 WSL 的 `/usr/local/bin/codex` 不是真正的 Codex CLI，而是代理包装器；真实 CLI 在 `/opt/node-current/bin/codex`。包装器只负责代理环境和本地-only logout，不再改 Codex TUI 参数。
 
+WSL 的 `/usr/local/bin/codex-bridge-launch` 是 tmux 会话启动器，不替代 Codex CLI；Windows `codex.cmd` 调它来创建/attach 每个工作目录对应的 Codex tmux 会话。
+
 如果 Terminal 窗口左右边缘出现蓝灰色 `[` / `]`，不要去改远端链路。那是 macOS Terminal 的 line marks，关闭 `ShowLineMarks` 或菜单 `View -> Hide Marks`。
 
 ## 不要回退的点
 
 - 不要把 Mac 本机命令改成 `codex`。
 - 不要让远端 Windows 的 `codex` 再询问目录。
+- 不要去承诺 SSH 在 Mac 切热点瞬间保持同一条 TCP 不断。这个链路是 SSH over EZ4Connect SOCKS，网络接口切换会直接拆旧 socket；正确目标是 tmux/会话可恢复。
 - 不要默认加 `--no-alt-screen`。它会让 transcript 退出后的主界面变空。长回复回看用 `Ctrl+T` 的 transcript/pager。
 - 不要再引入 `CODEX_TUI_MODE` 之类的 alternate-screen 切换。这个方向已经验证过不能解决边缘中括号。
 - 不要为了边缘中括号保留 WSL sshd/`win-wsl-ssh`。直连 Linux pty 已验证仍会出现 marks，根因在 macOS Terminal。

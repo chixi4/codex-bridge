@@ -282,3 +282,60 @@ win-codex migrate-sessions IsaacLab-22.04 Ubuntu-20.04
 ```
 
 这个命令只复制 `sessions/` 和 `history.jsonl`，不会覆盖目标 WSL 当前有效的 `auth.json`。
+
+## 每天夜里像是远端重启/断连
+
+先不要直接判断是远端 Windows 重启。按这个顺序看：
+
+```bash
+ez4-vpn status
+win-reboot-report 96
+```
+
+如果 `ez4-vpn status` 显示 `zju-connect is running but the SOCKS port is not listening yet`，并提示等待短信验证码，说明是 Mac 侧 EZ4Connect 没完成登录，SSH 一定连不上。去 EZ4Connect 终端输入短信验证码。
+
+如果 `win-reboot-report` 里看到：
+
+- `User32 1074`：正常计划重启，看 `Message` 里的发起进程和原因。
+- `WindowsUpdateClient` 加 `User32 1074`：大概率 Windows Update 自动重启。
+- `EventLog 6008` 或 `Kernel-Power 41`：非正常关机/断电/崩溃，需要看蓝屏、驱动、电源和硬件。
+- 多次 `BugCheck 0x113`、大量 `nvlddmkm`，或 `LiveKernelReports\WATCHDOG*.dmp`：优先按 NVIDIA/显卡驱动/图形栈 watchdog 排查。
+
+恢复顺序：
+
+```bash
+ez4-vpn restart
+win-ssh
+win-codex status
+win-codex reauth
+```
+
+最后一步只有 Codex 登录真的坏了才需要。训练任务恢复时优先找最新 checkpoint 和日志，不要在不确认旧进程是否还在时重复开训练。
+
+## 切 Wi-Fi/热点一瞬间就断
+
+这是普通 SSH over SOCKS 的物理限制：Mac 切网络接口时，旧 TCP socket 和 EZ4Connect 的 VPN socket 可能被立即关闭。`ServerAliveInterval` 只能延迟“没回包”的超时，不能让已经被系统关闭的 socket 迁移到新网络。
+
+解决目标不是“原连接不断”，而是“断了立刻接回远端状态”。远端 Windows 的 `codex` 默认使用 WSL tmux：
+
+```bat
+codex
+```
+
+断线后重新：
+
+```bash
+win-ssh
+```
+
+回到同一个项目目录再运行：
+
+```bat
+codex
+```
+
+会 attach 回同一个 tmux 会话。临时不用 tmux：
+
+```bat
+codex --no-tmux
+```

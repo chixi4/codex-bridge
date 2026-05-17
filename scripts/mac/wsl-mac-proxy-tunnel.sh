@@ -17,6 +17,9 @@ CAMPUS_SOCKS_PORT="${CAMPUS_SOCKS_PORT:-11080}"
 MAC_PROXY_HOST="${MAC_PROXY_HOST:-127.0.0.1}"
 MAC_PROXY_PORT="${MAC_PROXY_PORT:-7897}"
 REMOTE_FORWARD_PORT="${REMOTE_FORWARD_PORT:-17897}"
+SSH_SERVER_ALIVE_INTERVAL="${SSH_SERVER_ALIVE_INTERVAL:-60}"
+SSH_SERVER_ALIVE_COUNT_MAX="${SSH_SERVER_ALIVE_COUNT_MAX:-10}"
+SSH_TCP_KEEP_ALIVE="${SSH_TCP_KEEP_ALIVE:-yes}"
 
 exec /usr/bin/ssh \
   -i "$SSH_KEY" \
@@ -26,8 +29,8 @@ exec /usr/bin/ssh \
   -o StrictHostKeyChecking=no \
   -o UserKnownHostsFile=/tmp/codex_bridge_known_hosts \
   -o IdentitiesOnly=yes \
-  -o ServerAliveInterval=30 \
-  -o ServerAliveCountMax=3 \
-  -o TCPKeepAlive=yes \
+  -o ServerAliveInterval="$SSH_SERVER_ALIVE_INTERVAL" \
+  -o ServerAliveCountMax="$SSH_SERVER_ALIVE_COUNT_MAX" \
+  -o TCPKeepAlive="$SSH_TCP_KEEP_ALIVE" \
   -o ProxyCommand="/usr/bin/nc -X 5 -x ${CAMPUS_SOCKS_HOST}:${CAMPUS_SOCKS_PORT} %h %p" \
   "${REMOTE_USER}@${REMOTE_HOST}"

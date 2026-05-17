@@ -22,6 +22,7 @@ export ALL_PROXY="socks5h://${HOST_IP}:${PROXY_PORT}"
 "${NODE_PREFIX}/bin/npm" install -g @openai/codex
 ln -sf "${NODE_PREFIX}/bin/codex" /usr/local/bin/codex-raw
 install -m 0755 "$(dirname "$0")/codex" /usr/local/bin/codex
+install -m 0755 "$(dirname "$0")/codex-bridge-launch" /usr/local/bin/codex-bridge-launch
 install -m 0755 "$(dirname "$0")/win-net-check" /usr/local/bin/win-net-check
 
 codex --version
