@@ -15,12 +15,33 @@ REMOTE="${REMOTE_USER}@${REMOTE_HOST}"
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/nvidia_garlic_node05_vllm}"
 CAMPUS_SOCKS_HOST="${CAMPUS_SOCKS_HOST:-127.0.0.1}"
 CAMPUS_SOCKS_PORT="${CAMPUS_SOCKS_PORT:-11080}"
-PROXY="nc -X 5 -x ${CAMPUS_SOCKS_HOST}:${CAMPUS_SOCKS_PORT} %h %p"
+SSH_PROXY_MODE="${SSH_PROXY_MODE:-socks}"
 DISTRO="${CODEX_LOGIN_DISTRO:-${WSL_DISTRO:-Ubuntu-20.04}}"
 PORT="${OAUTH_CALLBACK_PORT:-1455}"
 SSH_SERVER_ALIVE_INTERVAL="${SSH_SERVER_ALIVE_INTERVAL:-60}"
 SSH_SERVER_ALIVE_COUNT_MAX="${SSH_SERVER_ALIVE_COUNT_MAX:-10}"
 SSH_TCP_KEEP_ALIVE="${SSH_TCP_KEEP_ALIVE:-yes}"
+
+SSH_OPTS=(
+  -i "$SSH_KEY"
+  -o ServerAliveInterval="$SSH_SERVER_ALIVE_INTERVAL"
+  -o ServerAliveCountMax="$SSH_SERVER_ALIVE_COUNT_MAX"
+  -o TCPKeepAlive="$SSH_TCP_KEEP_ALIVE"
+  -o IdentitiesOnly=yes
+)
+
+case "$SSH_PROXY_MODE" in
+  direct|none|off)
+    ;;
+  socks|ez4|proxy)
+    SSH_OPTS+=(-o "ProxyCommand=nc -X 5 -x ${CAMPUS_SOCKS_HOST}:${CAMPUS_SOCKS_PORT} %h %p")
+    ;;
+  *)
+    echo "Unknown SSH_PROXY_MODE: ${SSH_PROXY_MODE}" >&2
+    echo "Use SSH_PROXY_MODE=direct or SSH_PROXY_MODE=socks." >&2
+    exit 2
+    ;;
+esac
 
 if lsof -nP -iTCP:${PORT} -sTCP:LISTEN >/dev/null 2>&1; then
   echo "Local port ${PORT} is already in use. Close the existing login tunnel/server first."
@@ -43,21 +64,13 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 ssh -N -L "${PORT}:127.0.0.1:${PORT}" \
-  -i "$SSH_KEY" \
-  -o ProxyCommand="$PROXY" \
   -o ExitOnForwardFailure=yes \
-  -o ServerAliveInterval="$SSH_SERVER_ALIVE_INTERVAL" \
-  -o ServerAliveCountMax="$SSH_SERVER_ALIVE_COUNT_MAX" \
-  -o TCPKeepAlive="$SSH_TCP_KEEP_ALIVE" \
+  "${SSH_OPTS[@]}" \
   "$REMOTE" &
 tunnel_pid="$!"
 sleep 0.8
 
-ssh -tt -i "$SSH_KEY" \
-  -o ProxyCommand="$PROXY" \
-  -o ServerAliveInterval="$SSH_SERVER_ALIVE_INTERVAL" \
-  -o ServerAliveCountMax="$SSH_SERVER_ALIVE_COUNT_MAX" \
-  -o TCPKeepAlive="$SSH_TCP_KEEP_ALIVE" \
+ssh -tt "${SSH_OPTS[@]}" \
   "$REMOTE" \
   "wsl -d ${DISTRO} -- bash -lc 'codex login'" 2>&1 | tee "$tmp" &
 login_pid="$!"

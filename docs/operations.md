@@ -2,15 +2,23 @@
 
 ## 1. 启动前检查
 
+在学校/同一稳定内网时，SSH 直连 Windows：
+
+```bash
+# ~/.config/codex-bridge/env
+SSH_PROXY_MODE=direct
+```
+
 Mac：
 
 ```bash
-ez4-vpn status
-nc -zv 127.0.0.1 11080
+nc -zv 10.251.1.15 22
 nc -zv 127.0.0.1 7897
 win-codex status
 win-codex-diagnose
 ```
+
+离校或直连 `10.251.1.15:22` 不通时，再把 `SSH_PROXY_MODE` 切成 `socks`，启动 `ez4-vpn restart`，并检查 `127.0.0.1:11080`。
 
 如果后台隧道没有运行：
 
@@ -91,6 +99,8 @@ win-codex migrate-sessions IsaacLab-22.04 Ubuntu-20.04
 
 ## 4. EZ4Connect 设置
 
+这部分只用于离校/不能直连 Windows 的情况。学校内网直连时可以不启动 EZ4Connect。
+
 建议在 EZ4Connect 配置里保持：
 
 ```ini
@@ -128,18 +138,17 @@ win-reboot-report 96
 恢复顺序：
 
 ```bash
-ez4-vpn restart
-# 如果提示短信验证码，先在 EZ4Connect 终端输入验证码
+# 学校内网直连时直接重连；离校 socks 模式才先 ez4-vpn restart
 win-ssh
 win-codex status
 win-codex reauth   # 仅当 Codex 报 token revoked 或未登录时需要
 ```
 
-训练任务如果已经被远端重启杀掉，只能从最近 checkpoint 恢复；如果只是 SSH/VPN 断了，远端训练进程可能还在，重新 `win-ssh` 后先查任务管理器、日志或训练进度窗口，不要立刻重开同名训练。
+训练任务如果已经被远端重启杀掉，只能从最近 checkpoint 恢复；如果只是 SSH 断了，远端训练进程可能还在，重新 `win-ssh` 后先查任务管理器、日志或训练进度窗口，不要立刻重开同名训练。
 
 ## 6. 切 Wi-Fi/热点为什么会瞬断
 
-`win-ssh` 是普通 SSH over SOCKS。Mac 切 Wi-Fi/热点时，旧网络接口和 EZ4Connect 到校园网的 TLS/TCP 会话可能被系统立即拆掉；这类 `EOF` 不是 keepalive 能救的。keepalive 只能处理“网络黑洞但 socket 还没关”的情况。
+`win-ssh` 是普通 SSH。Mac 切 Wi-Fi/热点时，旧网络接口上的 TCP 会话可能被系统立即拆掉；如果走 EZ4Connect，EZ4 到校园网的 TLS/TCP 会话也可能一起被拆。这类 `EOF` 不是 keepalive 能救的。keepalive 只能处理“网络黑洞但 socket 还没关”的情况。
 
 为了让体验可恢复，远端 Windows 的 `codex` 默认会把 Codex 放进 WSL tmux 会话。断线后：
 

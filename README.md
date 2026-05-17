@@ -7,20 +7,30 @@
 当前链路：
 
 ```text
-Mac EZ4Connect SOCKS 11080 -> SSH 到 Windows 10.251.1.15
+Mac 校园网直连 -> SSH 到 Windows 10.251.1.15
 Mac Clash/Mixed 7897 -> SSH 反向隧道 -> Windows 127.0.0.1:17897
 Windows portproxy -> WSL 网关 172.17.x.1:17898
 WSL codex wrapper -> OpenAI / npm / Google
 ```
 
+离开校园网时，SSH 这一层可以切回 `SSH_PROXY_MODE=socks`，通过 EZ4Connect SOCKS `127.0.0.1:11080` 访问 Windows。
+
 ## 日常使用
 
-Mac 上确认 EZ4Connect 和 Clash 在：
+Mac 上校园网直连时确认：
 
 ```bash
+nc -zv 10.251.1.15 22
+nc -zv 127.0.0.1 7897
+win-codex-diagnose
+```
+
+如果离开校园网，需要先切回 EZ4Connect 模式并确认 SOCKS 在：
+
+```bash
+# 把 ~/.config/codex-bridge/env 里的 SSH_PROXY_MODE 改成 socks
 ez4-vpn status
 nc -zv 127.0.0.1 11080
-nc -zv 127.0.0.1 7897
 ```
 
 从 Mac 连远端 Windows：
@@ -92,6 +102,8 @@ win-codex logout --keep-tmux
 
 ## EZ4Connect 稳定性
 
+校园网直连时不需要开 EZ4Connect；它只是离校或无法直连 `10.251.1.15:22` 时的备用 SSH 入口。
+
 `ez4-vpn start` / `ez4-vpn restart` 会打开一个带 terminal-loop + supervisor 的 EZ4Connect 终端。如果 `zju-connect` 因 `panic: EOF` 崩溃，supervisor 会自动重启它；如果 supervisor 自己异常退出，terminal-loop 会把 supervisor 再拉起来。如果重启需要短信验证码，就在那个终端里输入验证码。
 
 ```bash
@@ -149,7 +161,7 @@ win-codex-diagnose
 
 ## 空闲后输不进字
 
-这通常是 SSH 经过 EZ4Connect/SOCKS 后半断：画面还在，但输入通道死了。不要继续等，开新窗口用 `win-ssh` 重新连。`win-ssh` 已经带 keepalive，后续会话要么保持活跃，要么快速断开，不会长期假活。
+这通常是 SSH 半断：画面还在，但输入通道死了。不要继续等，开新窗口用 `win-ssh` 重新连。`win-ssh` 已经带 keepalive，后续会话要么保持活跃，要么快速断开，不会长期假活。
 
 ## 查看完整回复
 

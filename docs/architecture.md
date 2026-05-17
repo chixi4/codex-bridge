@@ -4,7 +4,7 @@
 
 Mac：
 
-- EZ4Connect: `127.0.0.1:11080`，连校园/内网 Windows。
+- Windows SSH transport: 默认校园网直连 `10.251.1.15:22`；离校时可切到 EZ4Connect SOCKS `127.0.0.1:11080`。
 - Clash/Mixed proxy: `127.0.0.1:7897`，访问 OpenAI/Google/npm。
 - `win-ssh`: 带 keepalive 的远端 SSH。
 - `wsl-mac-proxy-tunnel.sh`: 建立 Windows 反向端口 `17897`。
@@ -38,7 +38,8 @@ WSL codex
 
 ```text
 Mac win-ssh
-  -> EZ4Connect SOCKS 127.0.0.1:11080
+  -> direct Windows SSH
+     or EZ4Connect SOCKS 127.0.0.1:11080
   -> Windows SSH
   -> Windows cmd
   -> codex.cmd

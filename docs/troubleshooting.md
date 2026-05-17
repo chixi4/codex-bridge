@@ -42,7 +42,7 @@ Mac -> Windows SSH -> WSL sshd 的直连 Linux pty
 
 ## 画面还在但完全输不进去
 
-最可能是 SSH 半断。EZ4Connect/SOCKS/VPN 路径断开时，TCP 会话可能没有立刻让终端知道，表现为界面停着但输入不进。
+最可能是 SSH 半断。无论是直连校园网还是 EZ4Connect/SOCKS/VPN 路径，底层 TCP 会话都可能没有立刻让终端知道，表现为界面停着但输入不进。
 
 解决：
 
@@ -59,8 +59,8 @@ win-ssh
 `win-ssh` 使用：
 
 ```text
-ServerAliveInterval=15
-ServerAliveCountMax=2
+ServerAliveInterval=60
+ServerAliveCountMax=10
 TCPKeepAlive=yes
 ```
 
@@ -304,7 +304,7 @@ win-reboot-report 96
 恢复顺序：
 
 ```bash
-ez4-vpn restart
+# 学校内网直连时不需要 ez4-vpn；离校用 socks 模式时才先 ez4-vpn restart
 win-ssh
 win-codex status
 win-codex reauth
@@ -314,7 +314,7 @@ win-codex reauth
 
 ## 切 Wi-Fi/热点一瞬间就断
 
-这是普通 SSH over SOCKS 的物理限制：Mac 切网络接口时，旧 TCP socket 和 EZ4Connect 的 VPN socket 可能被立即关闭。`ServerAliveInterval` 只能延迟“没回包”的超时，不能让已经被系统关闭的 socket 迁移到新网络。
+这是普通 SSH 的物理限制：Mac 切网络接口时，旧 TCP socket 可能被立即关闭；如果还走 EZ4Connect，VPN socket 也可能一起被拆。`ServerAliveInterval` 只能延迟“没回包”的超时，不能让已经被系统关闭的 socket 迁移到新网络。
 
 解决目标不是“原连接不断”，而是“断了立刻接回远端状态”。远端 Windows 的 `codex` 默认使用 WSL tmux：
 

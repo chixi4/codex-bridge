@@ -4,7 +4,8 @@
 
 ## Mac
 
-- EZ4Connect SOCKS: `127.0.0.1:11080`
+- 当前在学校/同一内网：`SSH_PROXY_MODE=direct`，直连 Windows `10.251.1.15:22`
+- 离校备用：`SSH_PROXY_MODE=socks`，EZ4Connect SOCKS `127.0.0.1:11080`
 - 本机互联网代理: `127.0.0.1:7897`
 - SSH key: `~/.ssh/nvidia_garlic_node05_vllm`
 - 远端入口: `win-ssh`
