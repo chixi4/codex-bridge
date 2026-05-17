@@ -84,6 +84,18 @@ win-codex logout
 win-codex logout --revoke
 ```
 
+## EZ4Connect 稳定性
+
+`ez4-vpn start` / `ez4-vpn restart` 会打开一个带 supervisor 的 EZ4Connect 终端。如果 `zju-connect` 因 `panic: EOF` 崩溃，supervisor 会自动重启它；如果重启需要短信验证码，就在那个终端里输入验证码。
+
+```bash
+ez4-vpn status
+ez4-vpn restart
+ez4-vpn stop
+```
+
+这不会让已经断掉的 SSH 原地复活，但能避免 VPN 崩溃后一直停在 `11080` 不监听的状态。
+
 ## 安装
 
 Mac：

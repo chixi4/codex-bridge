@@ -14,6 +14,7 @@ EZ4_BIN="${EZ4_BIN:-/Applications/EZ4Connect.app/Contents/MacOS/zju-connect}"
 EZ4_LOG="${EZ4_LOG:-$HOME/Library/Application Support/EZ4Connect/zjuconnect.manual.log}"
 EZ4_APP_LOG="${EZ4_APP_LOG:-$HOME/Library/Application Support/EZ4Connect/zjuconnect.log}"
 EZ4_PID_PATTERN="${EZ4_PID_PATTERN:-/Applications/EZ4Connect.app/Contents/MacOS/zju-connect}"
+EZ4_SUPERVISOR_PID="${EZ4_SUPERVISOR_PID:-$HOME/Library/Application Support/EZ4Connect/zjuconnect.supervisor.pid}"
 
 ini_get() {
   local section="$1" key="$2" file="${3:-$EZ4_CONFIG}"
@@ -189,6 +190,19 @@ status() {
   echo "EZ4Connect status"
   echo "================="
   echo
+  echo "-- Supervisor"
+  if [[ -f "$EZ4_SUPERVISOR_PID" ]]; then
+    local spid
+    spid="$(cat "$EZ4_SUPERVISOR_PID" 2>/dev/null || true)"
+    if [[ -n "$spid" ]] && kill -0 "$spid" 2>/dev/null; then
+      ps -p "$spid" -o pid,lstart,command | redact
+    else
+      echo "stale supervisor pid: ${spid:-<empty>}"
+    fi
+  else
+    echo "supervisor pid file not found"
+  fi
+  echo
   echo "-- Process"
   if pgrep -f "$EZ4_PID_PATTERN" >/dev/null 2>&1; then
     local procs
@@ -219,9 +233,18 @@ status() {
   else
     echo "No GUI log: $EZ4_APP_LOG"
   fi
+  if [[ -f "$EZ4_LOG" ]]; then
+    local last_panic
+    last_panic="$(rg -n "panic:|session timeout|SMS code verification failed|Error occurred while receiving|broken pipe|connection reset" "$EZ4_LOG" | tail -n 8 | redact || true)"
+    if [[ -n "$last_panic" ]]; then
+      echo
+      echo "-- Recent controlled-launcher fatal log"
+      printf '%s\n' "$last_panic"
+    fi
+  fi
 }
 
-run_foreground() {
+run_once() {
   if [[ ! -x "$EZ4_BIN" ]]; then
     echo "zju-connect binary not found: $EZ4_BIN" >&2
     exit 1
@@ -232,6 +255,49 @@ run_foreground() {
   print_sanitized_command
   "$EZ4_BIN" "${EZ4_ARGS[@]}" 2>&1 | tee -a "$EZ4_LOG"
   exit "${PIPESTATUS[0]}"
+}
+
+run_supervisor() {
+  local code attempt delay max_delay restart_enabled
+  if [[ ! -x "$EZ4_BIN" ]]; then
+    echo "zju-connect binary not found: $EZ4_BIN" >&2
+    exit 1
+  fi
+  mkdir -p "$(dirname "$EZ4_LOG")"
+  echo "$$" > "$EZ4_SUPERVISOR_PID"
+  trap 'rm -f "$EZ4_SUPERVISOR_PID"' EXIT
+
+  attempt=0
+  max_delay="${EZ4_RESTART_MAX_DELAY:-60}"
+  restart_enabled="$(default_bool "${EZ4_AUTO_RESTART:-1}" 1)"
+
+  while true; do
+    build_args
+    echo
+    echo "================================================================"
+    echo "EZ4 supervisor starting zju-connect at $(date '+%Y-%m-%d %H:%M:%S')"
+    echo "If SMS is required, type the code in this window."
+    echo "Press Ctrl-C to stop the supervisor."
+    print_sanitized_command
+
+    set +e
+    "$EZ4_BIN" "${EZ4_ARGS[@]}" 2>&1 | tee -a "$EZ4_LOG"
+    code="${PIPESTATUS[0]}"
+    set -e
+
+    echo "zju-connect exited with code ${code} at $(date '+%Y-%m-%d %H:%M:%S')" | tee -a "$EZ4_LOG"
+    if [[ "$restart_enabled" != "1" ]]; then
+      exit "$code"
+    fi
+
+    attempt=$((attempt + 1))
+    delay=$((attempt * 5))
+    if (( delay > max_delay )); then
+      delay="$max_delay"
+    fi
+    echo "Supervisor will restart zju-connect in ${delay}s. Press Ctrl-C to stop." | tee -a "$EZ4_LOG"
+    sleep "$delay"
+  done
 }
 
 start_terminal() {
@@ -246,10 +312,19 @@ start_terminal() {
     -e 'do script (item 1 of argv)' \
     -e 'end tell' \
     -e 'end run' \
-    "$tool foreground"
+    "$tool supervise"
 }
 
 stop_vpn() {
+  if [[ -f "$EZ4_SUPERVISOR_PID" ]]; then
+    local spid
+    spid="$(cat "$EZ4_SUPERVISOR_PID" 2>/dev/null || true)"
+    if [[ -n "$spid" ]] && [[ "$spid" != "$$" ]] && kill -0 "$spid" 2>/dev/null; then
+      kill "$spid" 2>/dev/null || true
+    fi
+    rm -f "$EZ4_SUPERVISOR_PID"
+  fi
+  pkill -f "ez4-vpn supervise" 2>/dev/null || true
   pkill -f "$EZ4_PID_PATTERN" 2>/dev/null || true
 }
 
@@ -259,7 +334,10 @@ quit_gui() {
 
 case "${1:-status}" in
   foreground|run)
-    run_foreground
+    run_once
+    ;;
+  supervise|supervisor|watch)
+    run_supervisor
     ;;
   start|start-terminal)
     start_terminal
@@ -292,10 +370,11 @@ case "${1:-status}" in
     cat <<'EOF'
 Usage:
   ez4-vpn status          Show process, ports, and fatal log markers
-  ez4-vpn start           Open a Terminal running controlled zju-connect
-  ez4-vpn foreground      Run controlled zju-connect in this terminal
-  ez4-vpn restart         Quit EZ4Connect GUI, stop zju-connect, then open controlled launcher
-  ez4-vpn stop            Stop zju-connect
+  ez4-vpn start           Open a Terminal running supervised zju-connect
+  ez4-vpn supervise       Run supervised zju-connect in this terminal
+  ez4-vpn foreground      Run controlled zju-connect once, without auto-restart
+  ez4-vpn restart         Quit EZ4Connect GUI, stop zju-connect, then open supervised launcher
+  ez4-vpn stop            Stop zju-connect and the supervisor
   ez4-vpn log [N]         Show recent sanitized EZ4Connect log lines
   ez4-vpn follow          Follow sanitized EZ4Connect log
 EOF
