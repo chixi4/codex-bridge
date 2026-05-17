@@ -10,6 +10,29 @@ export ALL_PROXY="socks5h://${HOST_IP}:${PROXY_PORT}"
 export NO_PROXY="localhost,127.0.0.1,::1,172.16.0.0/12,10.0.0.0/8,192.168.0.0/16"
 
 REAL_CODEX="${CODEX_REAL:-/opt/node-current/bin/codex}"
+KILL_TMUX_ON_LOGOUT="${CODEX_KILL_TMUX_ON_LOGOUT:-1}"
+
+kill_codex_tmux_sessions() {
+  if [[ "$KILL_TMUX_ON_LOGOUT" != "1" ]]; then
+    echo "Kept Codex tmux sessions."
+    return 0
+  fi
+  if command -v codex-bridge-tmux >/dev/null 2>&1; then
+    codex-bridge-tmux kill-all || true
+  elif command -v tmux >/dev/null 2>&1; then
+    if tmux list-sessions >/dev/null 2>&1; then
+      tmux list-sessions -F '#{session_name}' | awk '/^codex_/' |
+        while read -r session; do
+          [[ -n "$session" ]] || continue
+          tmux kill-session -t "$session" 2>/dev/null && echo "Killed $session"
+        done
+    else
+      echo "No tmux sessions"
+    fi
+  else
+    echo "tmux not installed"
+  fi
+}
 
 forget_auth() {
   local auth_dir auth_file backup ts
@@ -35,13 +58,21 @@ if [[ "${1:-}" == "logout" ]]; then
   case "${1:-}" in
     --revoke)
       shift
+      kill_codex_tmux_sessions
       exec "$REAL_CODEX" logout "$@"
+      ;;
+    --keep-tmux|--no-kill-tmux)
+      shift
+      KILL_TMUX_ON_LOGOUT=0
+      forget_auth
+      exit 0
       ;;
     -h|--help)
       cat <<'EOF'
 Usage:
-  codex logout           Forget local WSL auth.json only
-  codex logout --revoke  Run the upstream Codex logout command
+  codex logout              Forget local WSL auth.json and kill old Codex tmux sessions
+  codex logout --keep-tmux  Forget local WSL auth.json but keep Codex tmux sessions
+  codex logout --revoke     Run the upstream Codex logout command
 
 The default is intentionally local-only so this remote bridge does not revoke
 tokens that may also be in use by your Mac Codex app/CLI.
@@ -49,6 +80,7 @@ EOF
       exit 0
       ;;
     "")
+      kill_codex_tmux_sessions
       forget_auth
       exit 0
       ;;

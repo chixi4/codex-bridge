@@ -65,7 +65,7 @@ win-codex status
 win-codex logout
 ```
 
-它默认只移走远端 WSL 的 `auth.json`，不会退出 Mac 本机 Codex。只有明确要调用上游 Codex 退出登录时才用 `win-codex logout --revoke`。
+它默认移走远端 WSL 的 `auth.json`，并杀掉旧的远端 `codex_*` tmux 会话，避免旧 TUI 继续拿被撤销的 refresh token 重试。它不会退出 Mac 本机 Codex。只有明确要调用上游 Codex 退出登录时才用 `win-codex logout --revoke`。如果要保留 tmux 会话，用 `win-codex logout --keep-tmux`。
 
 如果你在 Mac 本地做过 `codex logout/login`，远端已经打开的 Codex TUI 可能因为服务端 token 轮换而报 auth 错误。先跑：
 
@@ -73,7 +73,7 @@ win-codex logout
 win-codex status
 ```
 
-主力 WSL 仍显示 `Logged in using ChatGPT` 时，关掉旧远端窗口后重新 `codex resume` 即可。
+主力 WSL 仍显示 `Logged in using ChatGPT` 时，直接关掉旧远端窗口后重新 `codex resume` 即可。
 
 如果旧窗口明确报 `Your access token could not be refreshed because your refresh token was revoked`，直接跑：
 
@@ -81,7 +81,7 @@ win-codex status
 win-codex reauth
 ```
 
-然后重新打开远端项目里的 `codex resume`。这个命令不会让已经开着的 Codex TUI 热更新，只负责给主力远端 WSL 重新拿一份 auth。
+它会杀掉旧的远端 Codex tmux 会话并给主力远端 WSL 重新拿一份 auth。完成后重新打开远端项目里的 `codex resume`。
 
 如果登录成功但 `resume` 里看不到旧会话，通常是旧 session 留在另一个 WSL：
 

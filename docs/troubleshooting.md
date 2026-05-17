@@ -146,7 +146,7 @@ win-codex login
 win-codex reauth
 ```
 
-然后关闭旧远端 Codex TUI，重新 `codex resume`。不要指望旧 TUI 热切换账号或热加载新 token；目前 Codex CLI 的稳定恢复方式就是重启 TUI 进程。
+它会清理远端 auth、杀掉旧的 `codex_*` tmux 会话，再重新网页登录。完成后重新 `codex resume`。不要指望旧 TUI 热切换账号或热加载新 token；目前 Codex CLI 的稳定恢复方式就是重启 TUI 进程。
 
 ## WSL 不能联网
 

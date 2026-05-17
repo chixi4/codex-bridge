@@ -12,22 +12,100 @@ fi
 DISTRO="${WSL_DISTRO:-Ubuntu-20.04}"
 AUTH_DISTROS="${CODEX_AUTH_DISTROS:-${DISTRO},IsaacLab-22.04}"
 REVOKE=0
+KILL_TMUX=1
 
-if [[ "${1:-}" == "--revoke" ]]; then
-  REVOKE=1
-  shift
-fi
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --revoke)
+      REVOKE=1
+      shift
+      ;;
+    --keep-tmux|--no-kill-tmux)
+      KILL_TMUX=0
+      shift
+      ;;
+    -h|--help)
+      cat <<'EOF'
+Usage:
+  win-codex logout              Forget remote WSL auth and kill old Codex tmux sessions
+  win-codex logout --keep-tmux  Forget auth but keep Codex tmux sessions
+  win-codex logout --revoke     Run upstream remote Codex logout deliberately
+
+Default logout is local-only for auth revocation, but it does kill remote
+codex_* tmux sessions so old TUI processes cannot keep using revoked tokens.
+EOF
+      exit 0
+      ;;
+    *)
+      echo "Unknown win-codex logout option: $1" >&2
+      exit 2
+      ;;
+  esac
+done
 
 logout_one() {
   local distro="$1"
   echo "== ${distro} =="
   if [[ "$REVOKE" == "1" ]]; then
-    "$(dirname "$0")/win-ssh" "wsl -d ${distro} -- bash -lc \"if ! command -v codex >/dev/null 2>&1; then echo codex-not-installed-in-this-WSL; exit 0; fi; codex logout --revoke || true\""
+    "$(dirname "$0")/win-ssh" "wsl -d ${distro} -- bash -lc '
+set -euo pipefail
+kill_tmux=${KILL_TMUX}
+kill_codex_tmux_sessions() {
+  if [[ \"\$kill_tmux\" != \"1\" ]]; then
+    echo \"kept Codex tmux sessions\"
+    return 0
+  fi
+  if command -v codex-bridge-tmux >/dev/null 2>&1; then
+    codex-bridge-tmux kill-all || true
+  elif command -v tmux >/dev/null 2>&1; then
+    if tmux list-sessions >/dev/null 2>&1; then
+      tmux list-sessions -F \"#{session_name}\" | awk \"/^codex_/\" |
+        while read -r session; do
+          [[ -n \"\$session\" ]] || continue
+          tmux kill-session -t \"\$session\" 2>/dev/null && echo \"Killed \$session\"
+        done
+    else
+      echo \"No tmux sessions\"
+    fi
+  else
+    echo \"tmux not installed\"
+  fi
+}
+kill_codex_tmux_sessions
+if ! command -v codex >/dev/null 2>&1; then
+  echo codex-not-installed-in-this-WSL
+  exit 0
+fi
+codex logout --revoke || true
+'"
     return
   fi
 
   "$(dirname "$0")/win-ssh" "wsl -d ${distro} -- bash -lc '
 set -euo pipefail
+kill_tmux=${KILL_TMUX}
+kill_codex_tmux_sessions() {
+  if [[ \"\$kill_tmux\" != \"1\" ]]; then
+    echo \"kept Codex tmux sessions\"
+    return 0
+  fi
+  if command -v codex-bridge-tmux >/dev/null 2>&1; then
+    codex-bridge-tmux kill-all || true
+  elif command -v tmux >/dev/null 2>&1; then
+    if tmux list-sessions >/dev/null 2>&1; then
+      tmux list-sessions -F \"#{session_name}\" | awk \"/^codex_/\" |
+        while read -r session; do
+          [[ -n \"\$session\" ]] || continue
+          tmux kill-session -t \"\$session\" 2>/dev/null && echo \"Killed \$session\"
+        done
+    else
+      echo \"No tmux sessions\"
+    fi
+  else
+    echo \"tmux not installed\"
+  fi
+}
+kill_codex_tmux_sessions
 auth_dir=\"\${CODEX_HOME:-\$HOME/.codex}\"
 auth_file=\"\${auth_dir}/auth.json\"
 mkdir -p \"\$auth_dir\"
@@ -57,5 +135,8 @@ done
 
 if [[ "$REVOKE" == "0" ]]; then
   echo "Remote WSL auth files were removed locally only. Mac Codex auth was not touched."
+  if [[ "$KILL_TMUX" == "1" ]]; then
+    echo "Remote Codex tmux sessions were killed so old TUI processes cannot reuse revoked tokens."
+  fi
   echo "Use 'win-codex logout --revoke' only if you deliberately want upstream Codex logout."
 fi
