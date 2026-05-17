@@ -46,15 +46,11 @@ if "!P:~0,1!"=="/" (
   if not "!P:~1,2!"==":\" (
     for %%I in ("!P!") do set "P=%%~fI"
   )
-  set "DRIVE=!P:~0,1!"
-  if /I "!DRIVE!"=="C" set "DRIVE=c"
-  if /I "!DRIVE!"=="D" set "DRIVE=d"
-  set "REST=!P:~3!"
-  set "REST=!REST:\=/!"
-  if "!REST!"=="" (
-    set "WSLWORK=/mnt/!DRIVE!"
-  ) else (
-    set "WSLWORK=/mnt/!DRIVE!/!REST!"
+  set "WSLWORK="
+  for /f "usebackq delims=" %%I in (`wsl -d %DISTRO% -- wslpath -a "!P!"`) do set "WSLWORK=%%I"
+  if "!WSLWORK!"=="" (
+    echo Failed to convert Windows path to WSL path: !P!
+    exit /b 2
   )
 )
 

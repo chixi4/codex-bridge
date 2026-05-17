@@ -32,7 +32,7 @@ ez4-vpn restart
 
 WSL 的 `/usr/local/bin/codex` 不是真正的 Codex CLI，而是代理包装器；真实 CLI 在 `/opt/node-current/bin/codex`。包装器只负责代理环境和本地-only logout，不再改 Codex TUI 参数。
 
-WSL 的 `/usr/local/bin/codex-bridge-launch` 是 tmux 会话启动器，不替代 Codex CLI；Windows `codex.cmd` 调它来创建/attach 每个工作目录对应的 Codex tmux 会话。
+WSL 的 `/usr/local/bin/codex-bridge-launch` 是 tmux 会话启动器，不替代 Codex CLI；Windows `codex.cmd` 用 `wslpath` 把当前 Windows 目录转换为 WSL 路径后调它来创建/attach 每个工作目录对应的 Codex tmux 会话。启动 Codex 时必须显式传 `--cd <WSL cwd>`，避免 TUI 内部 cwd 退回 `/root`。
 
 如果 Terminal 窗口左右边缘出现蓝灰色 `[` / `]`，不要去改远端链路。那是 macOS Terminal 的 line marks，关闭 `ShowLineMarks` 或菜单 `View -> Hide Marks`。
 

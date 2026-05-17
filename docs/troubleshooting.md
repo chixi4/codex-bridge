@@ -339,3 +339,11 @@ codex
 ```bat
 codex --no-tmux
 ```
+
+如果你确认自己在某个 Windows 项目目录里运行了 `codex`，但 Codex 顶部仍显示 `directory: ~` 或 `/resume` 只看到 `/root` 的历史，说明可能 attach 到了旧 wrapper 创建的 tmux 会话。先在 WSL 查看：
+
+```bash
+tmux list-panes -a -F 'session=#{session_name} cwd=#{pane_current_path} cmd=#{pane_current_command}'
+```
+
+杀掉错误目录对应的会话后再从 Windows 项目目录运行 `codex`，新 wrapper 会显式传 `--cd <当前 WSL 目录>`。
