@@ -10,6 +10,11 @@ set "MODE=yolo"
 set "WORK=%CD%"
 set "USE_TMUX=1"
 
+if /I "%~1"=="--tmux-list" goto tmux_list
+if /I "%~1"=="--tmux-kill" goto tmux_kill
+if /I "%~1"=="--tmux-kill-current" goto tmux_kill_current
+if /I "%~1"=="--tmux-kill-all" goto tmux_kill_all
+if /I "%~1"=="--tmux-help" goto tmux_help
 if /I "%~1"=="--version" goto direct
 if /I "%~1"=="-V" goto direct
 if /I "%~1"=="login" goto direct
@@ -66,4 +71,39 @@ exit /b !ERRORLEVEL!
 
 :direct
 wsl -d %DISTRO% -- bash -lc "exec codex %*"
+exit /b %ERRORLEVEL%
+
+:tmux_list
+wsl -d %DISTRO% -- bash -lc "exec codex-bridge-tmux list"
+exit /b %ERRORLEVEL%
+
+:tmux_kill
+if "%~2"=="" (
+  echo Usage: codex --tmux-kill codex_^^^^id
+  exit /b 2
+)
+wsl -d %DISTRO% -- bash -lc "exec codex-bridge-tmux kill ""$1""" tmux "%~2"
+exit /b %ERRORLEVEL%
+
+:tmux_kill_all
+wsl -d %DISTRO% -- bash -lc "exec codex-bridge-tmux kill-all"
+exit /b %ERRORLEVEL%
+
+:tmux_help
+wsl -d %DISTRO% -- bash -lc "exec codex-bridge-tmux help"
+exit /b %ERRORLEVEL%
+
+:tmux_kill_current
+set "P=%CD%"
+if "!P:~0,1!"=="/" (
+  set "WSLWORK=!P!"
+) else (
+  set "WSLWORK="
+  for /f "usebackq delims=" %%I in (`wsl -d %DISTRO% -- wslpath -a "!P!"`) do set "WSLWORK=%%I"
+  if "!WSLWORK!"=="" (
+    echo Failed to convert Windows path to WSL path: !P!
+    exit /b 2
+  )
+)
+wsl -d %DISTRO% -- bash -lc "exec codex-bridge-tmux kill-current ""$1""" tmux "!WSLWORK!"
 exit /b %ERRORLEVEL%

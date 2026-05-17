@@ -48,6 +48,15 @@ codex --dangerously-bypass-approvals-and-sandbox
 codex --no-tmux
 ```
 
+管理远端 Codex tmux 会话：
+
+```bat
+codex --tmux-list
+codex --tmux-kill-current
+codex --tmux-kill codex_xxxxxxxxxxxx
+codex --tmux-kill-all
+```
+
 需要保守模式时：
 
 ```bat

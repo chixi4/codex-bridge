@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+session_for_dir() {
+  local dir="$1" hash
+  cd "$dir"
+  dir="$(pwd -P)"
+  if command -v sha1sum >/dev/null 2>&1; then
+    hash="$(printf '%s' "$dir" | sha1sum | awk '{print $1}' | cut -c1-12)"
+  else
+    hash="$(printf '%s' "$dir" | cksum | awk '{print $1}')"
+  fi
+  printf 'codex_%s\n' "$hash"
+}
+
+list_sessions() {
+  if ! command -v tmux >/dev/null 2>&1; then
+    echo "tmux is not installed"
+    return 0
+  fi
+  if ! tmux list-sessions >/dev/null 2>&1; then
+    echo "No tmux sessions"
+    return 0
+  fi
+
+  printf '%-20s %-8s %s\n' "SESSION" "ATTACHED" "CWD"
+  tmux list-panes -a -F '#{session_name}|#{session_attached}|#{pane_current_path}|#{pane_current_command}' |
+    awk -F'|' '$1 ~ /^codex_/ { printf "%-20s %-8s %s  [%s]\n", $1, $2, $3, $4 }'
+}
+
+kill_session() {
+  local session="$1"
+  case "$session" in
+    codex_*) ;;
+    *)
+      echo "Refusing to kill non-Codex tmux session: $session" >&2
+      exit 2
+      ;;
+  esac
+  if tmux has-session -t "$session" 2>/dev/null; then
+    tmux kill-session -t "$session"
+    echo "Killed $session"
+  else
+    echo "No such session: $session"
+  fi
+}
+
+case "${1:-list}" in
+  list)
+    list_sessions
+    ;;
+  current-name)
+    session_for_dir "${2:-$PWD}"
+    ;;
+  kill-current)
+    kill_session "$(session_for_dir "${2:-$PWD}")"
+    ;;
+  kill)
+    if [[ -z "${2:-}" ]]; then
+      echo "Usage: codex-bridge-tmux kill codex_<id>" >&2
+      exit 2
+    fi
+    kill_session "$2"
+    ;;
+  kill-all)
+    if tmux list-sessions >/dev/null 2>&1; then
+      tmux list-sessions -F '#{session_name}' | awk '/^codex_/' |
+        while read -r session; do
+          [[ -n "$session" ]] && kill_session "$session"
+        done
+    else
+      echo "No tmux sessions"
+    fi
+    ;;
+  help|-h|--help)
+    cat <<'EOF'
+Usage:
+  codex --tmux-list                 List Codex tmux sessions
+  codex --tmux-kill-current         Kill the Codex tmux session for this cwd
+  codex --tmux-kill codex_<id>      Kill one Codex tmux session
+  codex --tmux-kill-all             Kill all Codex tmux sessions
+EOF
+    ;;
+  *)
+    echo "Unknown tmux command: $1" >&2
+    exit 2
+    ;;
+esac

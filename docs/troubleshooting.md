@@ -340,6 +340,17 @@ codex
 codex --no-tmux
 ```
 
+管理 tmux 会话：
+
+```bat
+codex --tmux-list
+codex --tmux-kill-current
+codex --tmux-kill codex_xxxxxxxxxxxx
+codex --tmux-kill-all
+```
+
+tmux 只能保证远端 TUI 进程不因 SSH 断开而退出。Mac 断网期间，远端训练可以继续，但远端 Codex 访问 OpenAI 仍依赖 Mac 代理和反向隧道；如果它正在生成回复或执行联网操作，可能会报网络错误。Mac 恢复联网后重新 `win-ssh` 并 attach 回 tmux，会话本身还在。
+
 如果你确认自己在某个 Windows 项目目录里运行了 `codex`，但 Codex 顶部仍显示 `directory: ~` 或 `/resume` 只看到 `/root` 的历史，说明可能 attach 到了旧 wrapper 创建的 tmux 会话。先在 WSL 查看：
 
 ```bash

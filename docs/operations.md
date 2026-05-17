@@ -157,9 +157,24 @@ codex
 codex --no-tmux
 ```
 
-这会先退出 EZ4Connect GUI，避免 GUI 用旧参数重新拉起子进程；然后停止现有 `zju-connect`，打开一个新 Terminal 运行不带 `-disable-keep-alive` 的启动命令。启动器默认还会优先把 VPN 域名解析到 IPv4，绕开目前见过的 IPv6/gVisor `panic: EOF` 路径。短信验证码仍然需要你在新窗口里输入。
+管理已经存在的 Codex tmux 会话：
 
-## 5. 半断窗口处理
+```bat
+codex --tmux-list
+codex --tmux-kill-current
+codex --tmux-kill codex_xxxxxxxxxxxx
+codex --tmux-kill-all
+```
+
+日常建议：
+
+- 想临时离开但保留会话：`Ctrl-b` 然后按 `d` detach。
+- 想关掉当前项目目录的 Codex 会话：在该目录运行 `codex --tmux-kill-current`。
+- 想清理全部 Codex tmux 会话：确认没有重要对话在跑，再运行 `codex --tmux-kill-all`。
+
+tmux 能长期保留远端进程，时间上主要受 Windows/WSL 是否重启、tmux 进程是否被杀、Codex 自己是否崩溃限制。它不能让远端在 Mac 完全离线时继续访问 OpenAI；Mac 离线期间，远端训练可以继续跑，但 Codex 发消息、联网搜索、npm/pip 走代理等网络动作会失败或卡到超时。Mac 网络恢复后，反向代理隧道需要重新连上，随后重新 attach tmux 就能继续。
+
+## 7. 半断窗口处理
 
 现象：
 
@@ -180,7 +195,7 @@ Codex 页面还在，但数字、英文、中文都输不进去。
 总是用 win-ssh，不要手敲裸 ssh。
 ```
 
-## 6. 上传前检查
+## 8. 上传前检查
 
 不要把真实密钥、Codex 登录态、EZ4Connect 日志原文传上去：
 
