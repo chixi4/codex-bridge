@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CONFIG="${CODEX_BRIDGE_ENV:-$HOME/.config/codex-bridge/env}"
+if [[ -f "$CONFIG" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$CONFIG"
+  set +a
+fi
+
+DISTRO="${CODEX_LOGIN_DISTRO:-${WSL_DISTRO:-Ubuntu-20.04}}"
+KILL_TMUX=1
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --distro)
+      DISTRO="${2:-}"
+      [[ -n "$DISTRO" ]] || { echo "--distro needs a value" >&2; exit 2; }
+      shift 2
+      ;;
+    --keep-tmux|--no-kill-tmux)
+      KILL_TMUX=0
+      shift
+      ;;
+    -h|--help)
+      cat <<'EOF'
+Usage:
+  win-codex reset-home [--distro Ubuntu-20.04] [--keep-tmux]
+
+Move the remote WSL ~/.codex directory to ~/.codex-bridge-backups and create a
+fresh ~/.codex. This is useful when OAuth login reaches the browser but token
+exchange fails or auth.json is never written.
+
+This does not revoke OpenAI tokens and does not delete data permanently.
+EOF
+      exit 0
+      ;;
+    *)
+      echo "Unknown win-codex reset-home option: $1" >&2
+      exit 2
+      ;;
+  esac
+done
+
+"$(dirname "$0")/win-ssh" "wsl -d ${DISTRO} -- bash -s" <<REMOTE
+set -euo pipefail
+
+kill_tmux=${KILL_TMUX}
+if [[ "\$kill_tmux" == "1" ]]; then
+  if command -v codex-bridge-tmux >/dev/null 2>&1; then
+    codex-bridge-tmux kill-all || true
+  elif command -v tmux >/dev/null 2>&1 && tmux list-sessions >/dev/null 2>&1; then
+    tmux list-sessions -F "#{session_name}" | awk "/^codex_/" |
+      while read -r session; do
+        [[ -n "\$session" ]] || continue
+        tmux kill-session -t "\$session" 2>/dev/null && echo "Killed \$session"
+      done
+  else
+    echo "No Codex tmux sessions to kill"
+  fi
+else
+  echo "Kept Codex tmux sessions"
+fi
+
+auth_dir="\${CODEX_HOME:-\$HOME/.codex}"
+backup_root="\${CODEX_BRIDGE_CODEX_BACKUP_ROOT:-\$HOME/.codex-bridge-backups}"
+ts=\$(date +%Y%m%d-%H%M%S)
+backup="\${backup_root}/codex-reset-\${ts}"
+
+mkdir -p "\$backup_root"
+if [[ -e "\$auth_dir" ]]; then
+  mv "\$auth_dir" "\$backup"
+  chmod -R go-rwx "\$backup" 2>/dev/null || true
+  echo "Moved old Codex home:"
+  echo "  \$auth_dir -> \$backup"
+else
+  echo "No old Codex home found at \$auth_dir"
+fi
+
+mkdir -p "\$auth_dir"
+chmod 700 "\$auth_dir" 2>/dev/null || true
+printf "%s\n" "\$backup" > "\$HOME/.codex-bridge-last-reset"
+echo "Fresh Codex home ready: \$auth_dir"
+echo "Backup marker: \$HOME/.codex-bridge-last-reset"
+REMOTE

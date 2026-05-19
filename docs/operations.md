@@ -62,6 +62,7 @@ Mac：
 ```bash
 win-codex login
 win-codex reauth
+win-codex hard-reauth
 win-codex status
 ```
 
@@ -90,6 +91,20 @@ win-codex reauth
 ```
 
 它会杀掉旧的远端 Codex tmux 会话并给主力远端 WSL 重新拿一份 auth。完成后重新打开远端项目里的 `codex resume`。
+
+如果普通网页登录已经打开，但远端报：
+
+```text
+Token exchange failed: error sending request for url (https://auth.openai.com/oauth/token)
+```
+
+或者登录后没有生成 `~/.codex/auth.json`，用更干净的重置：
+
+```bash
+win-codex hard-reauth
+```
+
+它会把远端主力 WSL 的整个旧 `~/.codex` 移到 `~/.codex-bridge-backups/codex-reset-<时间>`，再创建干净目录并重新登录。旧 session/config 没有被永久删除；必要时可从备份目录取回。
 
 如果登录成功但 `resume` 里看不到旧会话，通常是旧 session 留在另一个 WSL：
 

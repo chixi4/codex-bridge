@@ -148,6 +148,30 @@ win-codex reauth
 
 它会清理远端 auth、杀掉旧的 `codex_*` tmux 会话，再重新网页登录。完成后重新 `codex resume`。不要指望旧 TUI 热切换账号或热加载新 token；目前 Codex CLI 的稳定恢复方式就是重启 TUI 进程。
 
+## OAuth 打开浏览器后 token exchange 失败
+
+如果 `win-codex login` 已经打开本机浏览器，但远端最后报：
+
+```text
+Token exchange failed: error sending request for url (https://auth.openai.com/oauth/token)
+```
+
+或者登录后远端 `~/.codex/auth.json` 没有生成，优先怀疑旧 `~/.codex` 里的状态文件、缓存或半成品登录态干扰了 CLI。用干净重置：
+
+```bash
+win-codex hard-reauth
+```
+
+它不会直接 `rm -rf`。实际动作是：
+
+```text
+~/.codex -> ~/.codex-bridge-backups/codex-reset-<时间>
+mkdir ~/.codex
+win-codex login
+```
+
+所以旧 session/config/log 仍在备份目录里。这个命令会杀掉旧 `codex_*` tmux 会话，避免旧 TUI 继续拿坏 token 重试。
+
 ## WSL 不能联网
 
 在 WSL：

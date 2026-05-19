@@ -80,6 +80,7 @@ codex --safe
 ```bash
 win-codex login
 win-codex reauth
+win-codex hard-reauth
 win-codex status
 win-codex logout
 ```
@@ -87,6 +88,8 @@ win-codex logout
 `win-codex login` 会在 Mac 上开 `localhost:1455` 到远端 WSL 的临时回调隧道，并自动打开本机浏览器登录 OpenAI/Google。
 
 `win-codex reauth` 用于 Mac 本机 `codex logout/login` 之后远端旧 Codex 报 token 被撤销的情况：它会清掉主力远端 WSL 的旧 `auth.json`，杀掉旧的 `codex_*` tmux 会话，然后重新走一次网页登录。
+
+`win-codex hard-reauth` 用于更顽固的登录异常，例如浏览器 OAuth 已经打开但远端报 `Token exchange failed`、或者登录后迟迟没有生成 `~/.codex/auth.json`。它会把远端 WSL 的整个 `~/.codex` 移到 `~/.codex-bridge-backups/codex-reset-<时间>`，创建干净的新 `~/.codex`，再重新走网页登录。
 
 `win-codex logout` 默认移走远端 WSL 里的 `~/.codex/auth.json`，并杀掉旧的远端 Codex tmux 会话；它不会运行 Mac 本机的 `codex logout`，也尽量避免影响同账号的 Mac Codex app/CLI。只有明确要执行上游 Codex 退出登录时才用：
 
